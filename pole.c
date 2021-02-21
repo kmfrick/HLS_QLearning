@@ -4,7 +4,7 @@
  ----------------------------------------------------------------------*/
 #include "globals.h"
 
-int learn(vector w, vector e, vector xbar, vector v) {
+int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile vector v) {
 	float p, oldp, rhat, r;
 	int failures;
 	int i;
@@ -12,16 +12,16 @@ int learn(vector w, vector e, vector xbar, vector v) {
 	int steps;
 	int y;
 	int box;
-	float x, 		/* cart position, meters */
-		x_dot,		/* cart velocity */
-		theta,		/* pole angle, radians */
-		theta_dot;	/* pole angular velocity */
+	float x; 			// cart position, meters
+	float x_dot;		// cart velocity
+	float theta;		// pole angle, radians
+	float theta_dot;	// pole angular velocity
 
 	// Starting state is (0 0 0 0)
 	x = x_dot = theta = theta_dot = 0.0;
 
 	// Find box in state space containing start state
-	box = get_box(x, x_dot, theta, theta_dot);
+	box = discretize(x, x_dot, theta, theta_dot);
 
 	steps = 0;
 	failures = 0;
@@ -37,7 +37,7 @@ int learn(vector w, vector e, vector xbar, vector v) {
 		// Apply action to the simulated cart-pole
 		cart_pole(y, &x, &x_dot, &theta, &theta_dot);
 		// Get box of state space containing the resulting state.
-		box = get_box(x, x_dot, theta, theta_dot);
+		box = discretize(x, x_dot, theta, theta_dot);
 		if (box < 0) {
 			// Failure occurred.
 			failed = 1;
@@ -46,7 +46,7 @@ int learn(vector w, vector e, vector xbar, vector v) {
 			steps = 0;
 			// Reset state to (0 0 0 0).  Find the box.
 			x = x_dot = theta = theta_dot = 0.0;
-			box = get_box(x, x_dot, theta, theta_dot);
+			box = discretize(x, x_dot, theta, theta_dot);
 			// Reinforcement upon failure is -1. Prediction of failure is 0.
 			r = -1.0;
 			p = 0.;
@@ -64,8 +64,8 @@ int learn(vector w, vector e, vector xbar, vector v) {
 			// Update all weights.
 			w[i] += ALPHA * rhat * e[i];
 			v[i] += BETA * rhat * xbar[i];
-			if (v[i] < -1.0)
-				v[i] = v[i];
+			//if (v[i] < -1.0)
+			//	v[i] = v[i];
 
 			if (failed) {
 				// If failure, zero all traces.
@@ -81,8 +81,7 @@ int learn(vector w, vector e, vector xbar, vector v) {
 	return failures;
 }
 
-void cart_pole(int action, float *x, float *x_dot, float *theta,
-		float *theta_dot) {
+void cart_pole(volatile int action, volatile float *x, volatile float *x_dot, volatile float *theta, volatile float *theta_dot) {
 	float xacc, thetaacc, force, costheta, sintheta, temp;
 
 	force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
@@ -109,7 +108,7 @@ void cart_pole(int action, float *x, float *x_dot, float *theta,
 	*theta_dot += TAU * thetaacc;
 }
 
-int get_box(float x, float x_dot, float theta, float theta_dot) {
+int discretize(float x, float x_dot, float theta, float theta_dot) {
 	int box = 0;
 
 	if (x < -2.4 || x > 2.4 || theta < -twelve_degrees || theta > twelve_degrees)
@@ -123,6 +122,7 @@ int get_box(float x, float x_dot, float theta, float theta_dot) {
 		box = 2;
 
 	if (x_dot < -0.5)
+		// noop
 		;
 	else if (x_dot < 0.5)
 		box += 3;
@@ -130,6 +130,7 @@ int get_box(float x, float x_dot, float theta, float theta_dot) {
 		box += 6;
 
 	if (theta < -six_degrees)
+		// noop
 		;
 	else if (theta < -one_degree)
 		box += 9;

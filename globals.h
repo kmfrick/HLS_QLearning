@@ -5,10 +5,6 @@
 #include <stdlib.h>
 #include <math.h>
 
-//#define sin(x) sinf(x)
-//#define cos(x) cosf(x)
-//#define exp(x) pow(M_E, x)
-
 #define min(x, y)               ((x <= y) ? x : y)
 #define max(x, y)	        	((x >= y) ? x : y)
 #define prob_push_right(s)      (1.0 / (1.0 + exp(-max(-50.0, min(s, 50.0)))))
@@ -27,9 +23,9 @@
 typedef float vector[N_BOXES];
 
 int rng_state;
-int m, a, c; // Using glibc values
+int m, a, c; // Using glibc values for initialization
 
-int learn(vector w, vector e, vector xbar, vector v);
+int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile vector v);
 
 /*----------------------------------------------------------------------
  cart_pole:  Takes an action (0 or 1) and the current values of the
@@ -49,10 +45,10 @@ int learn(vector w, vector e, vector xbar, vector v);
 #define TAU 0.02		  /* seconds between state updates */
 #define FOURTHIRDS 1.3333333333333
 
-void cart_pole(int action, float *x, float *x_dot, float *theta, float *theta_dot);
+void cart_pole(volatile int action, volatile float *x, volatile float *x_dot, volatile float *theta, volatile float *theta_dot);
 
 /*----------------------------------------------------------------------
- get_box:  Given the current state, returns a number from 1 to 162
+ discretize:  Given the current state, returns a number from 1 to 162
  designating the region of the state space encompassing the current state.
  Returns a value of -1 if a failure state is encountered.
  ----------------------------------------------------------------------*/
@@ -62,7 +58,6 @@ void cart_pole(int action, float *x, float *x_dot, float *theta, float *theta_do
 #define twelve_degrees 0.2094384
 #define fifty_degrees 0.87266
 
-int get_box(float x, float x_dot, float theta, float theta_dot);
-
+int discretize(float x, float x_dot, float theta, float theta_dot);
 
 #endif
