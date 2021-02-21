@@ -9,7 +9,7 @@ int main() {
 	e, /* vector of action weight eligibilities */
 	xbar; /* vector of critic weight eligibilities */
 	int i;
-	int periods;
+	volatile int periods;
 
 	// Initialize RNG
 	m = 1 << 31;
@@ -20,8 +20,6 @@ int main() {
 	/*--- Initialize action and heuristic critic weights and traces. ---*/
 	for (i = 0; i < N_BOXES; i++)
 		w[i] = v[i] = xbar[i] = e[i] = 0.0;
-
-	/*--- Starting state is (0 0 0 0) ---*/
 
 
 	/*--- Iterate through the action-learn loop. ---*/

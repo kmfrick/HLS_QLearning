@@ -29,10 +29,7 @@ typedef float vector[N_BOXES];
 int rng_state;
 int m, a, c; // Using glibc values
 
-int learn(int y, vector w,
-		int box, vector e, vector xbar, float oldp, vector v, float x,
-		float x_dot, float theta, float theta_dot, float r, float p,
-		float rhat);
+int learn(vector w, vector e, vector xbar, vector v);
 
 /*----------------------------------------------------------------------
  cart_pole:  Takes an action (0 or 1) and the current values of the
