@@ -1,1 +1,0 @@
-set ::AESL_AUTOSIM::gTopFileName /home/kmfrick/Code/HLS_CartPole/solution1/./sim/autowrap/testbench/pole.c_pre.c.tb.c

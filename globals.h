@@ -1,46 +1,16 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-/*----------------------------------------------------------------------
- This file contains a simulation of the cart and pole dynamic system and
- a procedure for learning to balance the pole.  Both are described in
- Barto, Sutton, and Anderson, "Neuronlike Adaptive Elements That Can Solve
- Difficult Learning Control Problems," IEEE Trans. Syst., Man, Cybern.,
- Vol. SMC-13, pp. 834--846, Sept.--Oct. 1983, and in Sutton, "Temporal
- Aspects of Credit Assignment in Reinforcement Learning", PhD
- Dissertation, Department of Computer and Information Science, University
- of Massachusetts, Amherst, 1984.  The following routines are included:
-
- main:              controls simulation interations and implements
- the learning system.
-
- cart_and_pole:     the cart and pole dynamics; given action and
- current state, estimates next state
-
- get_box:           The cart-pole's state space is divided into 162
- boxes.  get_box returns the index of the box into
- which the current state appears.
-
- These routines were written by Rich Sutton and Chuck Anderson.  Claude Sammut
- translated parts from Fortran to C.  Please address correspondence to
- sutton@gte.com or anderson@cs.colostate.edu
- ---------------------------------------
- Changes:
- 1/93: A bug was found and fixed in the state -> box mapping which resulted
- in array addressing outside the range of the array.  It's amazing this
- program worked at all before this bug was fixed.  -RSS
- ----------------------------------------------------------------------*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
-#define sin(x) sinf(x)
-#define cos(x) cosf(x)
-#define exp(x) pow(M_E, x)
+//#define sin(x) sinf(x)
+//#define cos(x) cosf(x)
+//#define exp(x) pow(M_E, x)
 
 #define min(x, y)               ((x <= y) ? x : y)
-#define max(x, y)	        ((x >= y) ? x : y)
+#define max(x, y)	        	((x >= y) ? x : y)
 #define prob_push_right(s)      (1.0 / (1.0 + exp(-max(-50.0, min(s, 50.0)))))
 #define random                  ((float)(rng_state = (a * rng_state + c) % m)  / (float)((1 << 31) - 1)) * (rng_state < 0 ? -1 : 1)
 

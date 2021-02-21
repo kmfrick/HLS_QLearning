@@ -5,15 +5,15 @@
 ############################################################
 open_project HLS_CartPole
 set_top learn
-add_files HLS_CartPole/pole.c
 add_files HLS_CartPole/globals.h
-add_files -tb HLS_CartPole/main.c -cflags "-lm -Wno-unknown-pragmas" -csimflags "-Wno-unknown-pragmas"
+add_files HLS_CartPole/pole.c
+add_files -tb HLS_CartPole/main.c -cflags "-lm -Wno-unknown-pragmas"
 open_solution "solution1"
 set_part {xc7vx485t-ffg1157-1}
 create_clock -period 10 -name default
-config_export -format ip_catalog -rtl verilog
+config_export -format ip_catalog -rtl verilog -vivado_optimization_level 2 -vivado_phys_opt place -vivado_report_level 0
 #source "./HLS_CartPole/solution1/directives.tcl"
 csim_design -clean
 csynth_design
-cosim_design
-export_design -rtl verilog -format ip_catalog
+cosim_design -rtl vhdl
+export_design -rtl vhdl -format ip_catalog
