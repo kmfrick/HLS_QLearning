@@ -112,7 +112,7 @@ int discretize(float x, float x_dot, float theta, float theta_dot) {
 	int box = 0;
 
 	if (x < -2.4 || x > 2.4 || theta < -twelve_degrees || theta > twelve_degrees)
-		return (-1); /* to signal failure */
+		return (-1); // to signal failure
 
 	if (x < -0.8)
 		box = 0;
