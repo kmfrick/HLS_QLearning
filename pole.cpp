@@ -6,6 +6,10 @@
 #include "globals.hpp"
 
 int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile vector v, volatile int seed) {
+#pragma HLS INTERFACE ap_memory port=v
+#pragma HLS INTERFACE ap_memory port=xbar
+#pragma HLS INTERFACE ap_memory port=e
+#pragma HLS INTERFACE ap_memory port=w
 	float p, oldp, rhat, r;
 	int failures;
 	int i;
@@ -91,6 +95,7 @@ int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile v
 }
 
 void cart_pole(volatile int action, volatile float *x, volatile float *x_dot, volatile float *theta, volatile float *theta_dot) {
+#pragma HLS INTERFACE ap_ctrl_hs port=return
 	float xacc, thetaacc, force, costheta, sintheta, temp;
 
 	force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
@@ -118,6 +123,7 @@ void cart_pole(volatile int action, volatile float *x, volatile float *x_dot, vo
 }
 
 int discretize(float x, float x_dot, float theta, float theta_dot) {
+#pragma HLS INTERFACE ap_ctrl_hs port=return
 	int box = 0;
 
 	if (x < -2.4 || x > 2.4 || theta < -twelve_degrees || theta > twelve_degrees)
