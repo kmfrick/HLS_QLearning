@@ -5,18 +5,31 @@
 #include "hls_math.h"
 #include "globals.hpp"
 
-int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile vector v, volatile int seed) {
-#pragma HLS INTERFACE ap_memory port=v
-#pragma HLS INTERFACE ap_memory port=xbar
-#pragma HLS INTERFACE ap_memory port=e
-#pragma HLS INTERFACE ap_memory port=w
+int argmax(volatile float q[N_ACTIONS]) {
+	float max = q[0];
+	int pos_max = 0;
+	int i;
+	for (i = 0; i < N_ACTIONS; i++) {
+		if (q[i] > max) {
+			max = q[i];
+			pos_max = i;
+		}
+	}
+	return pos_max;
+}
+
+int learn(volatile satable q, volatile int seed) {
+#pragma HLS INTERFACE ap_memory port=q
 	float p, oldp, rhat, r;
 	int failures;
+
 	int i;
 	int failed;
-	int steps;
+	int steps, last_steps;
+	float mov_avg; // Moving average of steps, used to calculate solvability
 	int y;
 	int box;
+	int old_state;
 	float x; 			// cart position, meters
 	float x_dot;		// cart velocity
 	float theta;		// pole angle, radians
@@ -36,60 +49,49 @@ int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile v
 	// Find box in state space containing start state
 	box = discretize(x, x_dot, theta, theta_dot);
 
-	steps = 0;
+	steps = mov_avg = 0;
 	failures = 0;
 	// Iterate through the action-learn loop.
 	while (steps++ < MAX_STEPS && failures < MAX_FAILURES) {
-		// Choose action randomly, biased by current weight.
-		y = (random < prob_push_right(w[box]));
-		// Update traces.
-		e[box] += (1.0 - LAMBDAw) * (y - 0.5);
-		xbar[box] += (1.0 - LAMBDAv);
-		// Remember prediction of failure for current state
-		oldp = v[box];
+		// Experiment with probability EPS
+		if (random < EPS) {
+			y = random < 0.5;
+		} else {
+			y = argmax(q[box]);
+		}
+		//printf("Choosing action %d\n", y);
 		// Apply action to the simulated cart-pole
 		cart_pole(y, &x, &x_dot, &theta, &theta_dot);
 		// Get box of state space containing the resulting state.
+		old_state = box;
 		box = discretize(x, x_dot, theta, theta_dot);
 		if (box < 0) {
 			// Failure occurred.
 			failed = 1;
 			failures++;
-			//printf("Trial %d was %d steps.\n", failures, steps);
+			printf("Trial %d was %d steps.\n", failures, steps);
+			printf("Moving average for trial %d was %.2f steps.\n", failures, mov_avg);
+
+			mov_avg = mov_avg + (steps - mov_avg) / (failures > 100 ? float(failures) : 100.0);
+			if (mov_avg > OBJECTIVE) {
+				return failures;
+			}
+
 			steps = 0;
+
+			// Reinforcement upon failure is -1
+			q[old_state][y] += ALPHA * (-1 + GAMMA * q[box][argmax(q[box])] - q[old_state][y]);
 			// Reset state to (0 0 0 0).  Find the box.
 			x = x_dot = theta = theta_dot = 0.0;
 			box = discretize(x, x_dot, theta, theta_dot);
-			// Reinforcement upon failure is -1. Prediction of failure is 0.
-			r = -1.0;
-			p = 0.;
+
 		} else {
 			// Not a failure.
 			failed = 0;
-			// Reinforcement is 0. Prediction of failure given by v weight.
-			r = 0;
-			p = v[box];
+			// Reinforcement is 0
+			q[old_state][y] += ALPHA * (0 + GAMMA * q[box][argmax(q[box])] - q[old_state][y]);
 		}
-		// Heuristic reinforcement is:
-		// current reinforcement + gamma * new failure prediction - previous failure prediction
-		rhat = r + GAMMA * p - oldp;
-		for (i = 0; i < N_BOXES; i++) {
-			// Update all weights.
-			w[i] += ALPHA * rhat * e[i];
-			v[i] += BETA * rhat * xbar[i];
-			//if (v[i] < -1.0)
-			//	v[i] = v[i];
 
-			if (failed) {
-				// If failure, zero all traces.
-				e[i] = 0.;
-				xbar[i] = 0.;
-			} else {
-				// Otherwise, update (decay) the traces.
-				e[i] *= LAMBDAw;
-				xbar[i] *= LAMBDAv;
-			}
-		}
 	}
 	return failures;
 }

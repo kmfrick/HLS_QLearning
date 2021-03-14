@@ -5,19 +5,28 @@
 
 int main() {
 
-	vector w; // vector of action weights
-	vector v; // vector of critic weights
-	vector e; // vector of action weight eligibilities
-	vector xbar; // vector of critic weight eligibilities
+	satable q; // State-action
 	volatile int periods; // Will hold periods needed to converge
-	int i;
+	int i, j;
 
-	// Initialize action and heuristic critic weights and traces
-	for (i = 0; i < N_BOXES; i++)
-		w[i] = v[i] = xbar[i] = e[i] = 0.0;
+	int rng_state;
+	int m, a, c;
+	// Initialize RNG
+	// Using glibc values for initialization
+	m = 1 << 31;
+	a = 1103515245;
+	c = 12345;
+	rng_state = 54321;
+
+	// Initialize Q-table
+	for (i = 0; i < N_BOXES; i++) {
+		for (j = 0; j < N_ACTIONS; j++) {
+			q[i][j] = random;
+		}
+	}
 
 	// Iterate through the action-learn loop
-	periods = learn(w, e, xbar, v, 54321);
-	printf("%d\n", periods);
+	periods = learn(q, 54321);
+	printf("Took %d periods to balance the pole.\n", periods);
 
 }
