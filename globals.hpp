@@ -1,10 +1,6 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-
 #define min(x, y)               ((x <= y) ? x : y)
 #define max(x, y)	        	((x >= y) ? x : y)
 #define prob_push_right(s)      (1.0 / (1.0 + exp(-max(-50.0, min(s, 50.0)))))
@@ -22,10 +18,7 @@
 
 typedef float vector[N_BOXES];
 
-int rng_state;
-int m, a, c; // Using glibc values for initialization
-
-int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile vector v);
+int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile vector v, volatile int seed);
 
 /*----------------------------------------------------------------------
  cart_pole:  Takes an action (0 or 1) and the current values of the

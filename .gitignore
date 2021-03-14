@@ -10,7 +10,9 @@
 !LICENSE
 #C-files
 !*.c
+!*.cpp
 !*.h
+!*.hpp
 !*.elf
 !*.bmm
 !*.xmp

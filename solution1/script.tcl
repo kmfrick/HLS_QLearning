@@ -5,14 +5,14 @@
 ############################################################
 open_project HLS_CartPole
 set_top learn
-add_files HLS_CartPole/pole.c
-add_files HLS_CartPole/globals.h
-add_files -tb HLS_CartPole/main.c -cflags "-lm -Wno-unknown-pragmas" -csimflags "-Wno-unknown-pragmas"
+add_files HLS_CartPole/pole.cpp
+add_files HLS_CartPole/globals.hpp
+add_files -tb HLS_CartPole/main.cpp -cflags "-Wno-unknown-pragmas" -csimflags "-Wno-unknown-pragmas"
 open_solution "solution1"
 set_part {xc7z020-clg484-1}
 create_clock -period 10 -name default
-config_export -format ip_catalog -rtl verilog -vivado_optimization_level 2 -vivado_phys_opt place -vivado_report_level 0
-config_sdx -optimization_level none -target none
+config_sdx -target none
+config_export -format ip_catalog -rtl vhdl -vivado_optimization_level 2 -vivado_phys_opt place -vivado_report_level 0
 set_clock_uncertainty 12.5%
 source "./HLS_CartPole/solution1/directives.tcl"
 csim_design -clean

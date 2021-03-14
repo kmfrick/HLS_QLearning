@@ -2,9 +2,10 @@
  This file contains routines written by Rich Sutton and Chuck Anderson.
  Claude Sammut translated parts from Fortran to C.
  ----------------------------------------------------------------------*/
-#include "globals.h"
+#include "hls_math.h"
+#include "globals.hpp"
 
-int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile vector v) {
+int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile vector v, volatile int seed) {
 	float p, oldp, rhat, r;
 	int failures;
 	int i;
@@ -17,6 +18,14 @@ int learn(volatile vector w, volatile vector e, volatile vector xbar, volatile v
 	float theta;		// pole angle, radians
 	float theta_dot;	// pole angular velocity
 
+	int rng_state;
+	int m, a, c;
+	// Initialize RNG
+	// Using glibc values for initialization
+	m = 1 << 31;
+	a = 1103515245;
+	c = 12345;
+	rng_state = seed;
 	// Starting state is (0 0 0 0)
 	x = x_dot = theta = theta_dot = 0.0;
 
@@ -85,8 +94,8 @@ void cart_pole(volatile int action, volatile float *x, volatile float *x_dot, vo
 	float xacc, thetaacc, force, costheta, sintheta, temp;
 
 	force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
-	costheta = cos(*theta);
-	sintheta = sin(*theta);
+	costheta = hls::cos(*theta);
+	sintheta = hls::sin(*theta);
 
 	temp = (force + POLEMASS_LENGTH * *theta_dot * *theta_dot * sintheta)
 			/ TOTAL_MASS;
