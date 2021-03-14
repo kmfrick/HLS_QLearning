@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<autopilotfilemapping:AutoPilotFileMapping xmlns:autopilotfilemapping="www.autoesl.com/autopilotfilemapping">
+  <source>
+    <originFiles name="globals.hpp" path="/home/kmfrick/Documents/Code/HLS_CartPole/globals.hpp"/>
+    <originFiles name="pole.cpp" path="/home/kmfrick/Documents/Code/HLS_CartPole/pole.cpp"/>
+  </source>
+  <testbench>
+    <originFiles name="main.cpp" path="/home/kmfrick/Documents/Code/HLS_CartPole/main.cpp"/>
+  </testbench>
+</autopilotfilemapping:AutoPilotFileMapping>

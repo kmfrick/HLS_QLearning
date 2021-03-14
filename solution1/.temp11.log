@@ -1,0 +1,4 @@
+Pole balanced successfully after 42 periods
+42
+cosim.tv.exe: /home/kmfrick/Documents/Code/HLS_CartPole/main.cpp:21: int main(): Assertion `periods == 42' failed.
+71

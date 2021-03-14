@@ -5,9 +5,9 @@
 ############################################################
 open_project HLS_CartPole
 set_top learn
-add_files HLS_CartPole/pole.cpp
 add_files HLS_CartPole/globals.hpp
-add_files -tb HLS_CartPole/main.cpp -cflags "-Wno-unknown-pragmas" -csimflags "-Wno-unknown-pragmas"
+add_files HLS_CartPole/pole.cpp
+add_files -tb HLS_CartPole/main.cpp -cflags "-Wno-unknown-pragmas"
 open_solution "solution1"
 set_part {xc7z020-clg484-1}
 create_clock -period 10 -name default
