@@ -5,11 +5,11 @@
 #include "hls_math.h"
 #include "globals.hpp"
 
-int argmax(volatile float q[N_ACTIONS]) {
+int argmax(volatile float q[], volatile int dim) {
 	float max = q[0];
 	int pos_max = 0;
 	int i;
-	for (i = 0; i < N_ACTIONS; i++) {
+	for (i = 0; i < dim; i++) {
 		if (q[i] > max) {
 			max = q[i];
 			pos_max = i;
@@ -26,10 +26,9 @@ int learn(volatile satable q, volatile int seed) {
 	int i;
 	int failed;
 	int steps, last_steps;
-	float mov_avg; // Moving average of steps, used to calculate solvability
-	int y;
-	int box;
-	int old_state;
+	int action;
+	int new_state;
+	int state;
 	float x; 			// cart position, meters
 	float x_dot;		// cart velocity
 	float theta;		// pole angle, radians
@@ -47,49 +46,49 @@ int learn(volatile satable q, volatile int seed) {
 	x = x_dot = theta = theta_dot = 0.0;
 
 	// Find box in state space containing start state
-	box = discretize(x, x_dot, theta, theta_dot);
+	new_state = discretize(x, x_dot, theta, theta_dot);
 
-	steps = mov_avg = 0;
+	steps = 0;
 	failures = 0;
 	// Iterate through the action-learn loop.
 	while (steps++ < MAX_STEPS && failures < MAX_FAILURES) {
 		// Experiment with probability EPS
-		if (random < EPS) {
-			y = random < 0.5;
+		if (random <= EPS) {
+			action = coinflip;
 		} else {
-			y = argmax(q[box]);
+			action = argmax(q[new_state], N_ACTIONS);
 		}
-		//printf("Choosing action %d\n", y);
+
 		// Apply action to the simulated cart-pole
-		cart_pole(y, &x, &x_dot, &theta, &theta_dot);
+		cart_pole(action, &x, &x_dot, &theta, &theta_dot);
 		// Get box of state space containing the resulting state.
-		old_state = box;
-		box = discretize(x, x_dot, theta, theta_dot);
-		if (box < 0) {
+		state = new_state;
+		new_state = discretize(x, x_dot, theta, theta_dot);
+		if (new_state < 0) {
 			// Failure occurred.
 			failed = 1;
 			failures++;
 			printf("Trial %d was %d steps.\n", failures, steps);
-			printf("Moving average for trial %d was %.2f steps.\n", failures, mov_avg);
+			printf("EPS = %.3f, ALPHA = %.3f\n", EPS, ALPHA);
 
-			mov_avg = mov_avg + (steps - mov_avg) / (failures > 100 ? float(failures) : 100.0);
-			if (mov_avg > OBJECTIVE) {
+
+			// Stop learning if the objective is reached
+			if (steps > OBJECTIVE) {
 				return failures;
 			}
 
-			steps = 0;
-
 			// Reinforcement upon failure is -1
-			q[old_state][y] += ALPHA * (-1 + GAMMA * q[box][argmax(q[box])] - q[old_state][y]);
+			q[state][action] += ALPHA * (-1 + GAMMA * q[new_state][argmax(q[new_state], N_ACTIONS)] - q[state][action]);
 			// Reset state to (0 0 0 0).  Find the box.
 			x = x_dot = theta = theta_dot = 0.0;
-			box = discretize(x, x_dot, theta, theta_dot);
+			new_state = discretize(x, x_dot, theta, theta_dot);
+			steps = 0;
 
 		} else {
 			// Not a failure.
 			failed = 0;
 			// Reinforcement is 0
-			q[old_state][y] += ALPHA * (0 + GAMMA * q[box][argmax(q[box])] - q[old_state][y]);
+			q[state][action] += ALPHA * (0 + GAMMA * q[new_state][argmax(q[new_state], N_ACTIONS)] - q[state][action]);
 		}
 
 	}

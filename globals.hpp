@@ -3,8 +3,8 @@
 
 #define min(x, y)               ((x <= y) ? x : y)
 #define max(x, y)	        	((x >= y) ? x : y)
-#define prob_push_right(s)      (1.0 / (1.0 + exp(-max(-50.0, min(s, 50.0)))))
 #define random                  ((float)(rng_state = (a * rng_state + c) % m)  / (float)((1 << 31) - 1)) * (rng_state < 0 ? -1 : 1)
+#define coinflip 				(rng_state = (a * rng_state + c) % m) % 2  * (rng_state < 0 ? -1 : 1)
 
 #define OBJECTIVE 	195
 #define N_ACTIONS 	2
@@ -12,9 +12,9 @@
 #define ALPHA_MIN	0.1
 #define EPS_START	0.9
 #define EPS_END		0.05
-#define EPS_DECAY	200
-#define ALPHA		max(ALPHA_MIN, min(1.0, 1.0 - hls::log10((failures + 1) / 25)))        // Learning rate for the Q-table
-#define EPS 		EPS_END + (EPS_START - EPS_END) * hls::exp(-1. * failures / EPS_DECAY)			// Experimentation threshold
+#define EPS_DECAY	200.0
+#define ALPHA		max(ALPHA_MIN, min(1.0, 1.0 - hls::log10((failures + 1.0) / 25.0))) // Learning rate for the Q-table
+#define EPS 		EPS_END + (EPS_START - EPS_END) * hls::exp(-1. * failures / EPS_DECAY) // Experimentation threshold
 #define GAMMA 		0.999
 
 #define MAX_FAILURES     800         // Termination criterion.
