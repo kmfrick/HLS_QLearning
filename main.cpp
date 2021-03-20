@@ -26,7 +26,7 @@ int main() {
 	}
 
 	// Iterate through the action-learn loop
-	periods = learn(q, 50321);
+	periods = learn(q, 5032021);
 	printf("Took %d periods to balance the pole.\n", periods);
 
 }

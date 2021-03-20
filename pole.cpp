@@ -1,3 +1,4 @@
+
 /*----------------------------------------------------------------------
  This file contains routines written by Rich Sutton and Chuck Anderson.
  Claude Sammut translated parts from Fortran to C.
@@ -68,21 +69,21 @@ int learn(volatile satable q, volatile int seed) {
 			// Failure occurred.
 			failed = 1;
 			failures++;
-			printf("Trial %d was %d steps.\n", failures, steps);
-			printf("EPS = %.3f, ALPHA = %.3f\n", EPS, ALPHA);
+			//printf("Trial %d was %d steps.\n", failures, steps);
+			//printf("EPS = %.3f, ALPHA = %.3f\n", EPS, ALPHA);
 
 
 			// Stop learning if the objective is reached
 			if (steps > OBJECTIVE) {
 				return failures;
 			}
-
-			// Reinforcement upon failure is -1
-			q[state][action] += ALPHA * (-1 + GAMMA * q[new_state][argmax(q[new_state], N_ACTIONS)] - q[state][action]);
 			// Reset state to (0 0 0 0).  Find the box.
 			x = x_dot = theta = theta_dot = 0.0;
 			new_state = discretize(x, x_dot, theta, theta_dot);
 			steps = 0;
+
+			// Reinforcement upon failure is -1
+			q[state][action] += ALPHA * (-1 + GAMMA * q[new_state][argmax(q[new_state], N_ACTIONS)] - q[state][action]);
 
 		} else {
 			// Not a failure.
