@@ -20,16 +20,6 @@
 #define MAX_FAILURES     800         // Termination criterion.
 #define MAX_STEPS        100000
 
-typedef float satable[N_BOXES][N_ACTIONS];
-
-int learn(volatile satable q, volatile int seed);
-
-/*----------------------------------------------------------------------
- cart_pole:  Takes an action (0 or 1) and the current values of the
- four state variables and updates their values by estimating the state
- TAU seconds later.
- ----------------------------------------------------------------------*/
-
 // Parameters for simulation
 
 #define GRAVITY 9.8
@@ -42,7 +32,10 @@ int learn(volatile satable q, volatile int seed);
 #define TAU 0.02		  // seconds between state updates
 #define FOURTHIRDS 1.3333333333333
 
-void cart_pole(volatile int action, volatile float *x, volatile float *x_dot, volatile float *theta, volatile float *theta_dot);
+
+typedef float satable[N_BOXES][N_ACTIONS];
+
+short learn(volatile short seed);
 
 /*----------------------------------------------------------------------
  discretize:  Given the current state, returns a number from 1 to 162
