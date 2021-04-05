@@ -2,7 +2,7 @@
 
 Q-Learning on a ZedBoard with Vivado HLS. 
 
-Project work for the [Digital Systems M](https://www.unibo.it/en/teaching/course-unit-catalogue/course-unit/2020/385380)
+Project work for the [Digital Systems M](https://www.unibo.it/en/teaching/course-unit-catalogue/course-unit/2020/385380) course for the MSc Computer Engineering at the University of Bologna. 
 
 ## How to run
 
