@@ -4,14 +4,17 @@
 #include <ap_cint.h>
 #include <math.h>
 
-#define min(x, y)               ((x <= y) ? x : y)
-#define max(x, y)	        	((x >= y) ? x : y)
-#define random                  ((float)(rng_state = (a * rng_state + c) % m)  / (float)((1 << 31) - 1)) * (rng_state < 0 ? -1 : 1)
-#define coinflip 				(rng_state = (a * rng_state + c) % m) % 2  * (rng_state < 0 ? -1 : 1)
-
 #define OBJECTIVE 	195
 #define N_ACTIONS 	2
 #define N_BOXES     162         // Number of disjoint boxes of state space.
+
+#define min(x, y)               ((x <= y) ? x : y)
+#define max(x, y)	        	((x >= y) ? x : y)
+#define random(rng_state)       ((float)(rng_state = (a * rng_state + c) % m)  / (float)((1 << 31) - 1)) * (rng_state < 0 ? -1 : 1)
+#define random_action(rng_state) (rng_state = (a * rng_state + c) % m) % N_ACTIONS  * (rng_state < 0 ? -1 : 1)
+
+// Number of parallel learning agents
+#define N_AGENTS 4
 
 #define GAMMA 		0.999f
 
@@ -32,12 +35,11 @@
 #define TAU 0.02f		  // seconds between state updates
 #define FOURTHIRDS 1.333333333f
 
-
-typedef float satable[N_BOXES][N_ACTIONS];
+typedef float qvalue;
+typedef qvalue qtable[N_BOXES][N_ACTIONS];
 typedef uint1 bit;
-typedef uint8 led_array;
 
-short learn(volatile bit *running, volatile led_array *phase);
+void learn(volatile int *rng_state, volatile bit *running, volatile qtable q_shared[], volatile short failures[], uint8 id);
 
 /*----------------------------------------------------------------------
  discretize:  Given the current state, returns a number from 1 to 162
