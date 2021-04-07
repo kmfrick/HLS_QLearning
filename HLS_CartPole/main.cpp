@@ -87,7 +87,8 @@ int main() {
 	printf("Initializing q_shared\n");
 	// Iterate through the action-learn loop
 	printf("Calling learn()\n");
-	learn(&seed, &running, q_shared, failures, 0);
+	periods = learn(&seed, &running, q_shared, failures, 0);
+	assert(periods == failures[0]);
 	printf("Took %d periods to balance the pole.\n", failures[0]);
 	return 0;
 }

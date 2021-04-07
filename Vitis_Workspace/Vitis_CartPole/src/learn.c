@@ -51,35 +51,49 @@
 #include "xil_io.h"
 #include <unistd.h>
 
+#define N_AGENTS 4
+
 int main() {
 	u32 isDone, isIdle;
 	u32 return_val;
 	useconds_t sleeping_time_us = 5000000;
 	init_platform();
-
-	XLearn InstancePtr;
+	XLearn InstancePtr[N_AGENTS];
 	u16 DeviceId = 0;
+	int error;
+	u32 rng_seeds[N_AGENTS] = { 50321, 54321, 12345, 11111 };
 	XLearn_LookupConfig(DeviceId);
-	int error = XLearn_Initialize(&InstancePtr, DeviceId);
-	if (!error) {
-		printf("Init OK!\n");
-	} else {
-		printf("Init failed!\n");
+	for (DeviceId = 0; DeviceId < N_AGENTS; DeviceId++) {
+		error = XLearn_Initialize(&InstancePtr[DeviceId], DeviceId);
+		if (!error) {
+			printf("Init OK!\n");
+		} else {
+			printf("Init failed!\n");
+		}
+		XLearn_Set_rng_state(&InstancePtr[DeviceId], rng_seeds[DeviceId]);
+		printf("RNG seed for agent %ud = %ud", DeviceId,
+				XLearn_Get_rng_state(&InstancePtr[DeviceId]));
 	}
 
-	XLearn_Start(&InstancePtr);
-	printf("Starting to read AXI address\n");
+	for (DeviceId = 0; DeviceId < N_AGENTS; DeviceId++) {
+		XLearn_Start(&InstancePtr[DeviceId]);
+		printf("Agent %d starting\n", DeviceId);
+	}
 
 	while (!XLearn_IsDone(&InstancePtr)) {
-		printf("Waiting\n");
-		isDone = XLearn_IsDone(&InstancePtr);
-		isIdle = XLearn_IsIdle(&InstancePtr);
-		printf("Done = %ld\n", isDone);
-		printf("Idle = %ld\n", isIdle);
+		for (DeviceId = 0; DeviceId < N_AGENTS; DeviceId++) {
+			isDone = XLearn_IsDone(&InstancePtr[DeviceId]);
+			isIdle = XLearn_IsIdle(&InstancePtr[DeviceId]);
+			printf("Agent %ud done = %ld\n", isDone);
+			printf("Agent %ud idle = %ld\n", isIdle);
+		}
 		usleep(sleeping_time_us);
 	}
-	return_val = XLearn_Get_return(&InstancePtr);
-	printf("return = %d\n", return_val);
+	for (DeviceId = 0; DeviceId < N_AGENTS; DeviceId++) {
+		return_val = XLearn_Get_return(&InstancePtr[DeviceId]);
+		printf("return = %d\n", return_val);
+	}
+
 	printf("Goodbye!\n");
 	cleanup_platform();
 	return 0;

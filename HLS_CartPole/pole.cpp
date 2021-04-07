@@ -258,7 +258,8 @@ const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.066531, 0.066449, 0.066366, 0.066285, 0.066204, 0.066123, 0.066042,
 		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };
 
-void learn(volatile int *rng_state, volatile bit *running, volatile qtable q_shared[N_AGENTS], volatile short failures[N_AGENTS], ap_uint<8> id) {
+short learn(volatile int *rng_state, volatile bit *running, volatile qtable q_shared[N_AGENTS], volatile short failures[N_AGENTS], ap_uint<8> id) {
+#pragma HLS INTERFACE s_axilite port=return
 #pragma HLS INTERFACE ap_none port=id
 #pragma HLS INTERFACE ap_none port=running
 #pragma HLS INTERFACE s_axilite port=q_shared
@@ -399,7 +400,7 @@ void learn(volatile int *rng_state, volatile bit *running, volatile qtable q_sha
 				}
 				printf("};\n");
 #endif
-				return;
+				return failures[id];
 			}
 			// Reset state to (0 0 0 0).  Find the box.
 			x = x_dot = theta = theta_dot = 0.0f;
@@ -455,6 +456,7 @@ void learn(volatile int *rng_state, volatile bit *running, volatile qtable q_sha
 	while (!hls_rand_stream.empty()) {
 		hls_rand_stream.read();
 	}
+	return failures[id];
 }
 
 int discretize(float x, float x_dot, float theta, float theta_dot) {

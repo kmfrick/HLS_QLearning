@@ -31,7 +31,7 @@ typedef float qvalue;
 typedef qvalue qtable[N_BOXES][N_ACTIONS];
 typedef ap_uint<1> bit;
 
-void learn(volatile int *rng_state, volatile bit *running, volatile qtable q_shared[], volatile short failures[], ap_uint<8> id);
+short learn(volatile int *rng_state, volatile bit *running, volatile qtable q_shared[], volatile short failures[], ap_uint<8> id);
 
 /*----------------------------------------------------------------------
  discretize:  Given the current state, returns a number from 1 to 162
