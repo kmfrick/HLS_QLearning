@@ -2,7 +2,9 @@
 
 Q-Learning on a ZedBoard with Vivado HLS. 
 
-Project work for the [Digital Systems M](https://www.unibo.it/en/teaching/course-unit-catalogue/course-unit/2020/385380) course for the MSc Computer Engineering at the University of Bologna. 
+Project work for the [Digital Systems M](https://www.unibo.it/en/teaching/course-unit-catalogue/course-unit/2020/385380) course for the MSc Computer Engineering at the University of Bologna. Developed together with @davideraga.
+
+Credits to Wojtek Fedorko (@wfedorko) for the [Mersenne Twister random number generator](https://github.com/wfedorko/Mersenne-Twister-HLS/) used.
 
 ## How to run
 

@@ -5,15 +5,22 @@
  * run on FPGA hardware.												  *
  * ---------------------------------------------------------------------- */
 
-#include "globals.h"
+#include "pole.hpp"
+#include "mtwister.hpp"
 
-#define MAX_PERIODS 800
+#include <hls_math.h>
+#include <hls_stream.h>
+
+#define random_01 ((float)(hls_rand_stream.read()  / (float)((1 << 31) - 1)))
+#define random_action (hls_rand_stream.read() % N_ACTIONS)
+
+#define MOV_AVG_INTERVAL 50
 
 // Alpha: Q-table learning rate
 // alpha = max(ALPHA_MIN, min(1.0f, 1.0f - log10((failures + 1.0f) / 25.0f)))
 // ALPHA_MIN = 0.1f
 #define ALPHA(failures)		ALPHA_ARR[failures]
-const float ALPHA_ARR[MAX_PERIODS] = { 1.000000, 1.000000, 1.000000, 1.000000,
+const float ALPHA_ARR[MAX_FAILURES] = { 1.000000, 1.000000, 1.000000, 1.000000,
 		1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000,
 		1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000,
 		1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000, 1.000000,
@@ -135,7 +142,7 @@ const float ALPHA_ARR[MAX_PERIODS] = { 1.000000, 1.000000, 1.000000, 1.000000,
 // EPS_END		0.05f
 // EPS_DECAY	200.0f
 #define EPS(failures) EPS_ARR[failures]
-const float EPS_ARR[MAX_PERIODS] = { 0.900000, 0.895761, 0.891542, 0.887345,
+const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.883169, 0.879013, 0.874879, 0.870765, 0.866671, 0.862598, 0.858545,
 		0.854512, 0.850500, 0.846507, 0.842535, 0.838582, 0.834649, 0.830735,
 		0.826842, 0.822967, 0.819112, 0.815276, 0.811459, 0.807661, 0.803882,
@@ -251,8 +258,7 @@ const float EPS_ARR[MAX_PERIODS] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.066531, 0.066449, 0.066366, 0.066285, 0.066204, 0.066123, 0.066042,
 		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };
 
-void learn(volatile int *rng_state, volatile bit *running,
-		volatile qtable q_shared[], volatile short failures[], uint8 id) {
+void learn(volatile int *rng_state, volatile bit *running, volatile qtable q_shared[N_AGENTS], volatile short failures[N_AGENTS], ap_uint<8> id) {
 #pragma HLS INTERFACE ap_none port=id
 #pragma HLS INTERFACE ap_none port=running
 #pragma HLS INTERFACE s_axilite port=q_shared
@@ -271,18 +277,22 @@ void learn(volatile int *rng_state, volatile bit *running,
 	float theta;		// pole angle, radians
 	float theta_dot;	// pole angular velocity
 	float xacc, thetaacc, force, costheta, sintheta, temp;
-	int steps;
-	int m, a, c;
+	float moving_avg = -1;
+	int cur_steps;
+	int steps_sum = 0;
+	int steps[MAX_FAILURES];
 
 	// Initialize RNG
-	// Using glibc values for initialization
-	m = 1 << 31;
-	a = 1103515245;
-	c = 12345;
+	ap_uint<32> seed = *rng_state;
+	hls::stream<ap_uint<32> > hls_rand_stream;
+#pragma HLS STREAM variable=hls_rand_stream depth=32 dim=1
+
+	ap_uint<32> stream_length = MAX_FAILURES * OBJECTIVE;
+	mtwist_core(true, seed, stream_length, hls_rand_stream);
 	// Initialize Q-table
 	for (i = 0; i < N_BOXES; i++) {
 		for (j = 0; j < N_ACTIONS; j++) {
-			q_shared[id][i][j] = random(*rng_state);
+			q_shared[id][i][j] = random_01;
 		}
 	}
 	// Starting state is (0 0 0 0)
@@ -292,13 +302,13 @@ void learn(volatile int *rng_state, volatile bit *running,
 	// Find box in state space containing start state
 	new_state = discretize(x, x_dot, theta, theta_dot);
 
-	steps = 0;
+	cur_steps = 0;
 	failures[id] = 0;
 	// Iterate through the action-learn loop.
-	while (steps < MAX_STEPS && failures[id] < MAX_FAILURES) {
+	while (cur_steps < MAX_STEPS && failures[id] < MAX_FAILURES) {
 		// Experiment with probability EPS
-		if (random(*rng_state) <= EPS(failures[id])) {
-			action = random_action(*rng_state);
+		if (random_01 <= EPS(failures[id])) {
+			action = random_action;
 		} else {
 			// Begin action argmax
 			action = 0;
@@ -306,6 +316,7 @@ void learn(volatile int *rng_state, volatile bit *running,
 			for (i = 0; i < N_ACTIONS; i++) {
 				q_tilde = 0;
 				for (k = 0; k < N_AGENTS; k++) {
+#pragma HLS UNROLL
 					q_tilde += q_shared[k][new_state][i] * failures[k];
 				}
 				q_tilde /= N_AGENTS;
@@ -323,8 +334,9 @@ void learn(volatile int *rng_state, volatile bit *running,
 		// TAU seconds later.
 
 		force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
-		costheta = cos(theta);
-		sintheta = sin(theta);
+		sintheta = hls::sin(theta);
+		costheta = hls::cos(theta);
+
 
 		temp = (force + POLEMASS_LENGTH * theta_dot * theta_dot * sintheta)
 				/ TOTAL_MASS;
@@ -348,17 +360,26 @@ void learn(volatile int *rng_state, volatile bit *running,
 		state = new_state;
 		new_state = discretize(x, x_dot, theta, theta_dot);
 		if (new_state < 0) {
-			// Failure occurred.
+			// Failure occurred
+			steps[failures[id]] = cur_steps;
 			failed = 1;
 			failures[id]++;
-
+			steps_sum += cur_steps;
+			if (failures[id] >= MOV_AVG_INTERVAL) {
+				moving_avg = steps_sum / float(MOV_AVG_INTERVAL);
+				steps_sum -= steps[failures[id] - MOV_AVG_INTERVAL];
+			}
 #ifndef __SYNTHESIS__
-			printf("Trial %d was %d steps.\n", failures[id], steps);
+			printf("Trial %d was %d steps.\n", failures[id], cur_steps);
 			printf("EPS = %.3f, ALPHA = %.3f\n", EPS(failures[id]),
 					ALPHA(failures[id]));
+			if (failures[id] >= MOV_AVG_INTERVAL) {
+				printf("Moving average of %d steps = %.2f\n", MOV_AVG_INTERVAL, moving_avg);
+			}
 #endif
 			// Stop learning if the objective is reached
-			if (steps > OBJECTIVE) {
+
+			if (moving_avg > OBJECTIVE) {
 				*running = 0;
 #ifndef __SYNTHESIS__
 				printf("{ ");
@@ -383,7 +404,7 @@ void learn(volatile int *rng_state, volatile bit *running,
 			// Reset state to (0 0 0 0).  Find the box.
 			x = x_dot = theta = theta_dot = 0.0f;
 			new_state = discretize(x, x_dot, theta, theta_dot);
-			steps = 0;
+			cur_steps = 0;
 
 			// Begin argmax
 			q_max = q_shared[id][new_state][0];
@@ -409,7 +430,7 @@ void learn(volatile int *rng_state, volatile bit *running,
 			// End argmax
 			// Reinforcement is 0
 			q_shared[id][state][action] += ALPHA(failures[id]) * (0 + GAMMA * q_max - q_shared[id][state][action]);
-			steps++;
+			cur_steps++;
 		}
 	}
 #ifndef __SYNTHESIS__
@@ -431,6 +452,9 @@ void learn(volatile int *rng_state, volatile bit *running,
 	printf("};\n");
 #endif
 	*running = 0;
+	while (!hls_rand_stream.empty()) {
+		hls_rand_stream.read();
+	}
 }
 
 int discretize(float x, float x_dot, float theta, float theta_dot) {

@@ -73,9 +73,9 @@ int main() {
 	while (!XLearn_IsDone(&InstancePtr)) {
 		printf("Waiting\n");
 		isDone = XLearn_IsDone(&InstancePtr);
-				isIdle = XLearn_IsIdle(&InstancePtr);
-				printf("Done = %ld\n", isDone);
-				printf("Idle = %ld\n", isIdle);
+		isIdle = XLearn_IsIdle(&InstancePtr);
+		printf("Done = %ld\n", isDone);
+		printf("Idle = %ld\n", isIdle);
 		usleep(sleeping_time_us);
 	}
 	return_val = XLearn_Get_return(&InstancePtr);
