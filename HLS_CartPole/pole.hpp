@@ -13,7 +13,7 @@
 #define GAMMA 		0.999f
 
 #define MAX_STEPS  100000
-#define MAX_FAILURES 800         // Termination criterion.
+#define MAX_FAILURES 400         // Termination criterion.
 
 // Parameters for simulation
 
@@ -30,8 +30,9 @@
 typedef float qvalue;
 typedef qvalue qtable[N_BOXES][N_ACTIONS];
 typedef ap_uint<1> bit;
+typedef ap_uint<2> twobits;
 
-short learn(volatile int *rng_state, volatile bit *running, volatile qtable q_shared[], volatile short failures[], ap_uint<8> id);
+short learn(volatile int *rng_state, volatile twobits *running, volatile qtable q_shared[], volatile short failures[], ap_uint<8> id);
 
 /*----------------------------------------------------------------------
  discretize:  Given the current state, returns a number from 1 to 162

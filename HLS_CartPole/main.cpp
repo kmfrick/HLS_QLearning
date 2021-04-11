@@ -4,13 +4,13 @@
 #include <stdio.h>
 
 int main() {
-	volatile short periods; // Will hold periods needed to converge
-	volatile int seed = 50321;
-	volatile bit running;
+	short periods; // Will hold periods needed to converge
+	int seed = 50321;
+	static twobits running;
 	int i, j, k;
 
-	volatile qtable q_shared[N_AGENTS];
-	qtable q_temp = { { 0.16693, 0.82352 },
+	static qtable q_shared[N_AGENTS];
+	static qtable q_temp = { { 0.16693, 0.82352 },
 			{ 0.60380, 0.73938 }, { 0.00527, 0.91625 }, { 0.03561, 0.48119 }, {
 					0.48185, 0.15833 }, { 0.97689, 0.00340 },
 			{ 0.98688, 0.79428 }, { 0.22181, 0.05893 }, { 0.21510, 0.55064 }, {
@@ -83,7 +83,7 @@ int main() {
 			}
 		}
 	}
-	volatile short failures[N_AGENTS] = {0, 1, 1, 1};
+	static short failures[N_AGENTS] = {0, 1, 1, 1};
 	printf("Initializing q_shared\n");
 	// Iterate through the action-learn loop
 	printf("Calling learn()\n");
