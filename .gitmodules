@@ -1,0 +1,3 @@
+[submodule "Mersenne-Twister-HLS"]
+	path = Mersenne-Twister-HLS
+	url = git@github.com:kmfrick/Mersenne-Twister-HLS.git
