@@ -2,18 +2,19 @@
 #define GLOBALS_H
 
 #include <ap_int.h>
+#include <hls_stream.h>
 
 #define OBJECTIVE 	195
 #define N_ACTIONS 	2
-#define N_BOXES     162         // Number of disjoint boxes of state space.
+#define N_BOXES     162         // Number of disjoint boxes of state space
 
 // Number of parallel learning agents
-#define N_AGENTS 4
+#define N_AGENTS 1
 
 #define GAMMA 		0.999f
 
 #define MAX_STEPS  100000
-#define MAX_FAILURES 400         // Termination criterion.
+#define MAX_FAILURES 800         // Termination criterion
 
 // Parameters for simulation
 
@@ -32,7 +33,7 @@ typedef qvalue qtable[N_BOXES][N_ACTIONS];
 typedef ap_uint<1> bit;
 typedef ap_uint<2> twobits;
 
-short learn(volatile int *rng_state, volatile twobits *running, volatile qtable q_shared[], volatile short failures[], ap_uint<8> id);
+short learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running, volatile qtable q_shared[N_AGENTS], volatile short failures[N_AGENTS], ap_uint<8> id);
 
 /*----------------------------------------------------------------------
  discretize:  Given the current state, returns a number from 1 to 162

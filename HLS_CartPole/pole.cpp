@@ -77,7 +77,8 @@ const float ALPHA_ARR[MAX_FAILURES] = { 1.000000, 1.000000, 1.000000, 1.000000,
 		0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000,
 		0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000,
 		0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000,
-		0.100000, 0.100000, 0.100000, 0.100000 };/* 0.100000, 0.100000, 0.100000,
+		0.100000, 0.100000, 0.100000, 0.100000,
+		0.100000, 0.100000, 0.100000,
 		0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000,
 		0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000,
 		0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000,
@@ -134,7 +135,7 @@ const float ALPHA_ARR[MAX_FAILURES] = { 1.000000, 1.000000, 1.000000, 1.000000,
 		0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000,
 		0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000,
 		0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000, 0.100000,
-		0.100000, 0.100000, 0.100000, 0.100000, 0.100000 };*/
+		0.100000, 0.100000, 0.100000, 0.100000, 0.100000 };
 
 // Epsilon: experimentation threshold
 // eps = EPS_END + (EPS_START - EPS_END) * exp(-1.0f * (failures) / EPS_DECAY)
@@ -199,7 +200,8 @@ const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.180352, 0.179702, 0.179055, 0.178411, 0.177771, 0.177133, 0.176499,
 		0.175868, 0.175241, 0.174616, 0.173994, 0.173376, 0.172761, 0.172148,
 		0.171539, 0.170933, 0.170330, 0.169730, 0.169133, 0.168538, 0.167947,
-		0.167359, 0.166774, 0.166191, 0.165612};/* 0.165035, 0.164461, 0.163890,
+		0.167359, 0.166774, 0.166191, 0.165612,
+		0.165035, 0.164461, 0.163890,
 		0.163322, 0.162757, 0.162195, 0.161635, 0.161078, 0.160524, 0.159973,
 		0.159425, 0.158879, 0.158336, 0.157796, 0.157258, 0.156723, 0.156191,
 		0.155661, 0.155134, 0.154610, 0.154088, 0.153569, 0.153052, 0.152538,
@@ -256,15 +258,16 @@ const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.067730, 0.067641, 0.067553, 0.067466, 0.067379, 0.067292, 0.067206,
 		0.067120, 0.067034, 0.066949, 0.066865, 0.066781, 0.066697, 0.066614,
 		0.066531, 0.066449, 0.066366, 0.066285, 0.066204, 0.066123, 0.066042,
-		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };*/
+		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };
 
-short learn(volatile int *rng_state, volatile twobits *running, volatile qtable q_shared[N_AGENTS], volatile short failures[N_AGENTS], ap_uint<8> id) {
-#pragma HLS INTERFACE s_axilite port=return
+short learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running, volatile qtable q_shared[N_AGENTS], volatile short failures[N_AGENTS], ap_uint<8> id) {
+#pragma HLS INTERFACE axis register both port=hls_rand_stream
 #pragma HLS INTERFACE ap_none port=id
 #pragma HLS INTERFACE ap_none port=running
 #pragma HLS INTERFACE s_axilite port=q_shared
-#pragma HLS INTERFACE s_axilite port=rng_state
 #pragma HLS INTERFACE s_axilite port=failures
+#pragma HLS INTERFACE s_axilite port=return
+
 	*running = 1;
 	float p, oldp, rhat, r;
 	qvalue q_max;		// used to argmax over actions
@@ -283,18 +286,7 @@ short learn(volatile int *rng_state, volatile twobits *running, volatile qtable 
 	int cur_steps;
 	int steps_sum = 0;
 	int steps[MAX_FAILURES];
-	// Initialize RNG
-	ap_uint<32> seed = *rng_state;
-	hls::stream<ap_uint<32> > hls_rand_stream;
-#pragma HLS STREAM variable=hls_rand_stream depth=4096 dim=1
-	ap_uint<32> stream_length = MAX_FAILURES * OBJECTIVE;
-	mtwist_core(true, seed, stream_length, hls_rand_stream);
-	/*// Initialize Q-table
-	for (i = 0; i < N_BOXES; i++) {
-		for (j = 0; j < N_ACTIONS; j++) {
-			q_shared[id][i][j] = 0.8;//random_01;
-		}
-	}*/
+
 	// Starting state is (0 0 0 0)
 	x = x_dot = theta = theta_dot = 0.0f;
 
@@ -451,6 +443,7 @@ short learn(volatile int *rng_state, volatile twobits *running, volatile qtable 
 	}
 	printf("};\n");
 #endif
+
 	*running = 11;
 	return failures[id];
 }
@@ -500,3 +493,4 @@ int discretize(float x, float x_dot, float theta, float theta_dot) {
 
 	return (box);
 }
+

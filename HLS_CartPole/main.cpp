@@ -1,14 +1,13 @@
 #include "pole.hpp"
+#include "mtwister.hpp"
 
 #include <assert.h>
 #include <stdio.h>
 
 int main() {
 	short periods; // Will hold periods needed to converge
-	int seed = 50321;
 	static twobits running;
 	int i, j, k;
-
 	static qtable q_shared[N_AGENTS];
 	static qtable q_temp = { { 0.16693, 0.82352 },
 			{ 0.60380, 0.73938 }, { 0.00527, 0.91625 }, { 0.03561, 0.48119 }, {
@@ -83,11 +82,19 @@ int main() {
 			}
 		}
 	}
-	static short failures[N_AGENTS] = {0, 1, 1, 1};
+	static short failures[N_AGENTS];
+	for (k = 0; k < N_AGENTS; k++) {
+		failures[k] = k;
+	}
+	// Initialize RNG
+	ap_uint<32> seed = 50321;
+	static hls::stream<ap_uint<32> > hls_rand_stream;
+	ap_uint<32> stream_length = MAX_FAILURES * OBJECTIVE;
+	mtwist_core(true, seed, stream_length, hls_rand_stream);
 	printf("Initializing q_shared\n");
 	// Iterate through the action-learn loop
 	printf("Calling learn()\n");
-	periods = learn(&seed, &running, q_shared, failures, 0);
+	periods = learn(hls_rand_stream, &running, q_shared, failures, 0);
 	assert(periods == failures[0]);
 	printf("Took %d periods to balance the pole.\n", failures[0]);
 	return 0;
