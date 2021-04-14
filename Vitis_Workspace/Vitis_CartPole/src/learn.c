@@ -62,7 +62,7 @@ int main() {
 	u16 device_id = 0;
 	XLearn instance_ptr[N_AGENTS];
 	int error;
-	short failures;
+	int failures;
 	useconds_t sleeping_time_us = 5000000;
 
 	init_platform();
@@ -79,10 +79,10 @@ int main() {
 		}
 	}
 
-	short zero = 0;
+	int zero = 0;
 	for (k = 0; k < N_AGENTS; k++) {
 		XLearn_Write_failures_Bytes(&instance_ptr[k], 0, &zero,
-								sizeof(short));
+								sizeof(int));
 		for (i = 0; i < N_BOXES; i++) {
 			for (j = 0; j < N_ACTIONS; j++) {
 				float r = (rand() % 100) / 100.0f;
@@ -113,9 +113,9 @@ int main() {
 			printf("Agent %d done = %lu\n", device_id, is_done);
 			//is_done  = XLearn_ReadReg(instance_ptr->Axilites_BaseAddress, XLEARN_AXILITES_ADDR_AP_CTRL);
 			//printf("AP_CTRL = %lu\n", is_done);
-			//float r;
-			//XLearn_Read_q_shared_Words(&instance_ptr[device_id], 0, &r, 1);
-			//printf("q%d00 = %.3f\n", device_id, r);
+			float r;
+			XLearn_Read_q_shared_Words(&instance_ptr[device_id], 0, &r, 1);
+			printf("q%d00 = %.3f\n", device_id, r);
 		}
 	}
 	printf("\nPrinting return values\n");
@@ -127,7 +127,7 @@ int main() {
 	for (device_id = 0; device_id < N_AGENTS; device_id++) {
 		for (i = 0; i < N_AGENTS; i++) {
 			XLearn_Read_failures_Bytes(&instance_ptr[device_id],
-					i * sizeof(short), &failures, sizeof(short));
+					i * sizeof(int), &failures, sizeof(int));
 			printf("Agent %d failures = %d\n", i, failures);
 		}
 	}

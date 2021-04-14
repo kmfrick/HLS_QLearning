@@ -9,7 +9,7 @@
 #define N_BOXES     162         // Number of disjoint boxes of state space
 
 // Number of parallel learning agents
-#define N_AGENTS 1
+#define N_AGENTS 2
 
 #define GAMMA 		0.999f
 
@@ -33,7 +33,7 @@ typedef qvalue qtable[N_BOXES][N_ACTIONS];
 typedef ap_uint<1> bit;
 typedef ap_uint<2> twobits;
 
-short learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running, volatile qtable q_shared[N_AGENTS], volatile short failures[N_AGENTS], ap_uint<8> id);
+int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running, volatile qtable q_shared[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id);
 
 /*----------------------------------------------------------------------
  discretize:  Given the current state, returns a number from 1 to 162

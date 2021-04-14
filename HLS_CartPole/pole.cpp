@@ -260,13 +260,13 @@ const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.066531, 0.066449, 0.066366, 0.066285, 0.066204, 0.066123, 0.066042,
 		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };
 
-short learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running, volatile qtable q_shared[N_AGENTS], volatile short failures[N_AGENTS], ap_uint<8> id) {
-#pragma HLS INTERFACE axis register both port=hls_rand_stream
+int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running, volatile qtable q_shared[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id) {
+#pragma HLS INTERFACE axis register both port=hls_rand_stream bundle=random
 #pragma HLS INTERFACE ap_none port=id
 #pragma HLS INTERFACE ap_none port=running
-#pragma HLS INTERFACE s_axilite port=q_shared
-#pragma HLS INTERFACE s_axilite port=failures
-#pragma HLS INTERFACE s_axilite port=return
+#pragma HLS INTERFACE s_axilite port=q_shared bundle=shared
+#pragma HLS INTERFACE s_axilite port=failures bundle=shared
+#pragma HLS INTERFACE s_axilite port=return   bundle=ret
 
 	*running = 1;
 	float p, oldp, rhat, r;

@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 int main() {
-	short periods; // Will hold periods needed to converge
+	int periods; // Will hold periods needed to converge
 	static twobits running;
 	int i, j, k;
 	static qtable q_shared[N_AGENTS];
@@ -82,7 +82,7 @@ int main() {
 			}
 		}
 	}
-	static short failures[N_AGENTS];
+	static int failures[N_AGENTS];
 	for (k = 0; k < N_AGENTS; k++) {
 		failures[k] = k;
 	}
