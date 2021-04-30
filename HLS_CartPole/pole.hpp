@@ -31,12 +31,16 @@
 typedef float qvalue;
 typedef qvalue qtable[N_BOXES][N_ACTIONS];
 typedef ap_uint<1> bit;
-typedef ap_uint<2> twobits;
+typedef ap_uint<4> status_bits;
+#define STATUS_START 0x01
+#define STATUS_INIT_DONE 0x03
+#define STATUS_FIRST_FAILURE 0x07
+#define STATUS_DONE 0x0F
 
-int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running, volatile qtable q_shared[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id);
+int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &running, volatile qtable q_shared[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id);
 
 /*----------------------------------------------------------------------
- discretize:  Given the current state, returns a number from 1 to 162
+ discretize:  Given the current state, returns a number from 1 to N_BOXES
  designating the region of the state space encompassing the current state.
  Returns a value of -1 if a failure state is encountered.
  ----------------------------------------------------------------------*/

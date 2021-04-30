@@ -6,10 +6,8 @@
  * ---------------------------------------------------------------------- */
 
 #include "pole.hpp"
-#include "mtwister.hpp"
 
 #include <hls_math.h>
-#include <hls_stream.h>
 
 #define random_01 ((float)(hls_rand_stream.read()  / (float)((1 << 31) - 1)))
 #define random_action (hls_rand_stream.read() % N_ACTIONS)
@@ -260,15 +258,15 @@ const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.066531, 0.066449, 0.066366, 0.066285, 0.066204, 0.066123, 0.066042,
 		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };
 
-int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running, volatile qtable q_shared[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id) {
+int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &running, volatile qtable q_shared[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id) {
 #pragma HLS INTERFACE axis register both port=hls_rand_stream bundle=random
 #pragma HLS INTERFACE ap_none port=id
 #pragma HLS INTERFACE ap_none port=running
-#pragma HLS INTERFACE s_axilite port=q_shared bundle=shared
-#pragma HLS INTERFACE s_axilite port=failures bundle=shared
-#pragma HLS INTERFACE s_axilite port=return   bundle=ret
+#pragma HLS INTERFACE s_axilite port=return
+#pragma HLS INTERFACE m_axi depth=8192 port=q_shared offset=off
+#pragma HLS INTERFACE m_axi depth=128 port=failures offset=off
 
-	*running = 1;
+	running = STATUS_START;
 	float p, oldp, rhat, r;
 	qvalue q_max;		// used to argmax over actions
 	qvalue q_tilde;
@@ -290,12 +288,17 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running,
 	// Starting state is (0 0 0 0)
 	x = x_dot = theta = theta_dot = 0.0f;
 
+	if (failures[id] == 0x1337) {
+		running = 0x05;
+		return 0xbeef;
+	}
 
 	// Find box in state space containing start state
 	new_state = discretize(x, x_dot, theta, theta_dot);
 
 	cur_steps = 0;
 	failures[id] = 0;
+	running = STATUS_INIT_DONE;
 	// Iterate through the action-learn loop.
 	while (cur_steps < MAX_STEPS && failures[id] < MAX_FAILURES) {
 		// Experiment with probability EPS
@@ -308,8 +311,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running,
 			for (i = 0; i < N_ACTIONS; i++) {
 				q_tilde = 0;
 				for (k = 0; k < N_AGENTS; k++) {
-#pragma HLS UNROLL
-					q_tilde += q_shared[k][new_state][i] * failures[k];
+					q_tilde +=	q_shared[k][new_state][i] * failures[k];
 				}
 				q_tilde /= N_AGENTS;
 				if (q_tilde > q_max) {
@@ -356,6 +358,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running,
 			steps[failures[id]] = cur_steps;
 			failed = 1;
 			failures[id]++;
+			running = STATUS_FIRST_FAILURE;
 			steps_sum += cur_steps;
 			if (failures[id] >= MOV_AVG_INTERVAL) {
 				moving_avg = steps_sum / float(MOV_AVG_INTERVAL);
@@ -372,7 +375,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running,
 			// Stop learning if the objective is reached
 
 			if (moving_avg > OBJECTIVE) {
-				*running = 0;
+				running = STATUS_DONE;
 #ifndef __SYNTHESIS__
 				printf("{ ");
 				for (i = 0; i < N_BOXES; i++) {
@@ -444,7 +447,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile twobits *running,
 	printf("};\n");
 #endif
 
-	*running = 11;
+	running = STATUS_DONE;
 	return failures[id];
 }
 

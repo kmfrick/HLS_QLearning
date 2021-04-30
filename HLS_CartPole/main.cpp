@@ -6,9 +6,8 @@
 
 int main() {
 	int periods; // Will hold periods needed to converge
-	static twobits running;
+	static status_bits running;
 	int i, j, k;
-	static qtable q_shared[N_AGENTS];
 	static qtable q_temp = { { 0.16693, 0.82352 },
 			{ 0.60380, 0.73938 }, { 0.00527, 0.91625 }, { 0.03561, 0.48119 }, {
 					0.48185, 0.15833 }, { 0.97689, 0.00340 },
@@ -75,17 +74,15 @@ int main() {
 			{ 0.45032, 0.67657 }, { -0.01265, 0.11104 }, { 0.60695, 0.45009 }, {
 					0.35380, 0.39453 }, { 0.16838, 0.66728 },
 			{ 0.18779, 0.65427 }};
+	qtable q[N_AGENTS];
 	for (k = 0; k < N_AGENTS; k++) {
-		for (i = 0; i < N_BOXES; i++ ) {
+		for (i = 0; i < N_BOXES; i++) {
 			for (j = 0; j < N_ACTIONS; j++) {
-				q_shared[k][i][j] = q_temp[i][j];
+				q[k][i][j] = q_temp[i][j];
 			}
 		}
 	}
-	static int failures[N_AGENTS];
-	for (k = 0; k < N_AGENTS; k++) {
-		failures[k] = k;
-	}
+	int failures[N_AGENTS] = {0, 1};
 	// Initialize RNG
 	ap_uint<32> seed = 50321;
 	static hls::stream<ap_uint<32> > hls_rand_stream;
@@ -94,8 +91,8 @@ int main() {
 	printf("Initializing q_shared\n");
 	// Iterate through the action-learn loop
 	printf("Calling learn()\n");
-	periods = learn(hls_rand_stream, &running, q_shared, failures, 0);
+	periods = learn(hls_rand_stream, running, q, failures, 0);
 	assert(periods == failures[0]);
-	printf("Took %d periods to balance the pole.\n", failures[0]);
+	printf("Took %d periods to balance the pole.\n", periods);
 	return 0;
 }
