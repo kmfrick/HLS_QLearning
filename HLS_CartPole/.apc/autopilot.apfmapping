@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<autopilotfilemapping:AutoPilotFileMapping xmlns:autopilotfilemapping="www.autoesl.com/autopilotfilemapping">
+  <source>
+    <originFiles name="pole.cpp" path="C:\Users\kmfrick\Desktop\HLS_QLearning\HLS_CartPole\pole.cpp"/>
+    <originFiles name="pole.hpp" path="C:\Users\kmfrick\Desktop\HLS_QLearning\HLS_CartPole\pole.hpp"/>
+  </source>
+  <testbench>
+    <originFiles name="main.cpp" path="C:\Users\kmfrick\Desktop\HLS_QLearning\HLS_CartPole\main.cpp"/>
+    <originFiles name="mtwister.cpp" path="C:\Users\kmfrick\Desktop\HLS_QLearning\HLS_CartPole\mtwister.cpp"/>
+    <originFiles name="mtwister.hpp" path="C:\Users\kmfrick\Desktop\HLS_QLearning\HLS_CartPole\mtwister.hpp"/>
+  </testbench>
+</autopilotfilemapping:AutoPilotFileMapping>
