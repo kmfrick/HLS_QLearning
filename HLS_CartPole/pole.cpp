@@ -259,7 +259,7 @@ const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };
 
 int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &running, volatile qtable q_shared[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id) {
-#pragma HLS INTERFACE axis register both port=hls_rand_stream bundle=random
+#pragma HLS INTERFACE axis port=hls_rand_stream
 #pragma HLS INTERFACE ap_none port=id
 #pragma HLS INTERFACE ap_none port=running
 #pragma HLS INTERFACE s_axilite port=return
@@ -268,20 +268,14 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 
 	running = STATUS_START;
 	float p, oldp, rhat, r;
-	qvalue q_max;		// used to argmax over actions
-	qvalue q_tilde;
-	int i, j, k;
 	int failed;
 	int action;
-	int new_state;
 	int state;
 	float x; 			// cart position, meters
 	float x_dot;		// cart velocity
 	float theta;		// pole angle, radians
 	float theta_dot;	// pole angular velocity
-	float xacc, thetaacc, force, costheta, sintheta, temp;
 	float moving_avg = -1;
-	int cur_steps;
 	int steps_sum = 0;
 	int steps[MAX_FAILURES];
 
@@ -294,9 +288,9 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 	}
 
 	// Find box in state space containing start state
-	new_state = discretize(x, x_dot, theta, theta_dot);
+	int new_state = discretize(x, x_dot, theta, theta_dot);
 
-	cur_steps = 0;
+	int cur_steps = 0;
 	failures[id] = 0;
 	running = STATUS_INIT_DONE;
 	// Iterate through the action-learn loop.
@@ -307,10 +301,12 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 		} else {
 			// Begin action argmax
 			action = 0;
-			q_max = q_shared[id][new_state][0];
-			for (i = 0; i < N_ACTIONS; i++) {
-				q_tilde = 0;
-				for (k = 0; k < N_AGENTS; k++) {
+			qvalue q_max = q_shared[id][new_state][0];
+			for (int i = 0; i < N_ACTIONS; i++) {
+#pragma HLS PIPELINE II=2
+				qvalue q_tilde = 0;
+				for (int k = 0; k < N_AGENTS; k++) {
+#pragma HLS UNROLL
 					q_tilde +=	q_shared[k][new_state][i] * failures[k];
 				}
 				q_tilde /= N_AGENTS;
@@ -327,20 +323,20 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 		// four state variables and updates their values by estimating the state
 		// TAU seconds later.
 
-		force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
-		sintheta = hls::sin(theta);
-		costheta = hls::cos(theta);
+		float force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
+		float sintheta = hls::sin(theta);
+		float costheta = hls::cos(theta);
 
 
-		temp = (force + POLEMASS_LENGTH * theta_dot * theta_dot * sintheta)
+		float temp = (force + POLEMASS_LENGTH * theta_dot * theta_dot * sintheta)
 				/ TOTAL_MASS;
 
-		thetaacc = (GRAVITY * sintheta - costheta * temp)
+		float thetaacc = (GRAVITY * sintheta - costheta * temp)
 				/ (LENGTH
 						* (FOURTHIRDS
 								- MASSPOLE * costheta * costheta / TOTAL_MASS));
 
-		xacc = temp - POLEMASS_LENGTH * thetaacc * costheta / TOTAL_MASS;
+		float xacc = temp - POLEMASS_LENGTH * thetaacc * costheta / TOTAL_MASS;
 
 		// Update the four state variables, using Euler's method.
 
@@ -378,8 +374,8 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 				running = STATUS_DONE;
 #ifndef __SYNTHESIS__
 				printf("{ ");
-				for (i = 0; i < N_BOXES; i++) {
-					for (j = 0; j < N_ACTIONS; j++) {
+				for (int i = 0; i < N_BOXES; i++) {
+					for (int j = 0; j < N_ACTIONS; j++) {
 						if (j == 0) {
 							printf("{ ");
 						}
@@ -402,8 +398,9 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 			cur_steps = 0;
 
 			// Begin argmax
-			q_max = q_shared[id][new_state][0];
-			for (i = 0; i < N_ACTIONS; i++) {
+			qvalue q_max = q_shared[id][new_state][0];
+			for (int i = 0; i < N_ACTIONS; i++) {
+#pragma HLS PIPELINE II=2
 				if (q_shared[id][new_state][i] > q_max) {
 					q_max = q_shared[id][new_state][i];
 				}
@@ -416,8 +413,9 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 			// Not a failure.
 			failed = 0;
 			// Begin argmax
-			q_max = q_shared[id][new_state][0];
-			for (i = 0; i < N_ACTIONS; i++) {
+			qvalue q_max = q_shared[id][new_state][0];
+			for (int i = 0; i < N_ACTIONS; i++) {
+#pragma HLS PIPELINE II=2
 				if (q_shared[id][new_state][i] > q_max) {
 					q_max = q_shared[id][new_state][i];
 				}
@@ -430,8 +428,8 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 	}
 #ifndef __SYNTHESIS__
 	printf("{ ");
-	for (i = 0; i < N_BOXES; i++) {
-		for (j = 0; j < N_ACTIONS; j++) {
+	for (int i = 0; i < N_BOXES; i++) {
+		for (int j = 0; j < N_ACTIONS; j++) {
 			if (j == 0) {
 				printf("{ ");
 			}
