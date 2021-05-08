@@ -1,0 +1,49 @@
+\documentclass{beamer}
+\usepackage{amsmath}
+\usepackage[english]{babel}
+\usepackage{commath}
+\usepackage[autostyle, english = american]{csquotes}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage[sort,round]{natbib}
+\usepackage{parskip}
+\usepackage{subcaption}
+\usepackage{microtype}
+\usepackage[utf8]{microtype}
+\usetheme{Boadilla}
+\begin{document}
+\title{Parallel Q-Learning on FPGA}
+\author{Kevin Michael Frick \and Davide Ragazzini}
+\institute{Università di Bologna}
+\date{\today}
+\setbeamercovered{transparent}
+\begin{frame}
+	\titlepage
+\end{frame}
+
+\begin{frame}
+	\frametitle{Q-Learning}
+	\begin{itemize}
+		\item \emph{On-policy}, \emph{classical} reinforcement learning algorithm
+	\item Used to estimate an optimal policy in Markov decision processes, i.e. the policy that maximizes the expected value of the total reward over all successive steps
+	\item The \emph{reward function} $Q(s, a)$ is approximated using a state-action matrix known as the Q-table
+	\item After taking action $a$ in state $s$, obtaining reward $r$, $Q[s][a]$ is updated following $Q[s][a] += \alpha  (r + \gamma  \bar{Q}[s] - Q[s][a])$
+	\end{itemize}
+	{
+	
+	\centering
+
+	%\includegraphics[width=0.5\textwidth]{neural_net2.jpg}
+
+
+	}
+\end{frame}
+
+\begin{frame}[allowframebreaks]
+	\frametitle{References}
+	\bibliographystyle{plainnat}
+	\nocite{*}
+	\bibliography{main}
+\end{frame}
+\end{document}
