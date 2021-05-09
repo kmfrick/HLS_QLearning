@@ -9,7 +9,9 @@
 
 #include <hls_math.h>
 
-#define random_01 ((float)(hls_rand_stream.read()  / (float)((1 << 31) - 1)))
+const float MTWISTER_MAX = float(ap_uint<32>(~0)/2);
+
+#define random_01 (hls_rand_stream.read() / MTWISTER_MAX)
 #define random_action (hls_rand_stream.read() % N_ACTIONS)
 
 #define MOV_AVG_INTERVAL 50
@@ -258,13 +260,13 @@ const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.066531, 0.066449, 0.066366, 0.066285, 0.066204, 0.066123, 0.066042,
 		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };
 
-int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &running, volatile qtable q_shared[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id) {
+int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &running, volatile qtable q[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id) {
 #pragma HLS INTERFACE axis port=hls_rand_stream
 #pragma HLS INTERFACE ap_none port=id
 #pragma HLS INTERFACE ap_none port=running
 #pragma HLS INTERFACE s_axilite port=return
-#pragma HLS INTERFACE m_axi depth=8192 port=q_shared offset=off
-#pragma HLS INTERFACE m_axi depth=128 port=failures offset=off
+#pragma HLS INTERFACE s_axilite port=q
+#pragma HLS INTERFACE s_axilite port=failures
 
 	running = STATUS_START;
 	float p, oldp, rhat, r;
@@ -282,11 +284,6 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 	// Starting state is (0 0 0 0)
 	x = x_dot = theta = theta_dot = 0.0f;
 
-	if (failures[id] == 0x1337) {
-		running = 0x05;
-		return 0xbeef;
-	}
-
 	// Find box in state space containing start state
 	int new_state = discretize(x, x_dot, theta, theta_dot);
 
@@ -301,13 +298,12 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 		} else {
 			// Begin action argmax
 			action = 0;
-			qvalue q_max = q_shared[id][new_state][0];
+			qvalue q_max = q[id][new_state][0];
 			for (int i = 0; i < N_ACTIONS; i++) {
-#pragma HLS PIPELINE II=2
 				qvalue q_tilde = 0;
 				for (int k = 0; k < N_AGENTS; k++) {
 #pragma HLS UNROLL
-					q_tilde +=	q_shared[k][new_state][i] * failures[k];
+					q_tilde +=	q[k][new_state][i] * failures[k];
 				}
 				q_tilde /= N_AGENTS;
 				if (q_tilde > q_max) {
@@ -318,33 +314,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 			// End action argmax
 		}
 
-		// Begin cart-pole simulation
-		// Takes an action (0 or 1) and the current values of the
-		// four state variables and updates their values by estimating the state
-		// TAU seconds later.
-
-		float force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
-		float sintheta = hls::sin(theta);
-		float costheta = hls::cos(theta);
-
-
-		float temp = (force + POLEMASS_LENGTH * theta_dot * theta_dot * sintheta)
-				/ TOTAL_MASS;
-
-		float thetaacc = (GRAVITY * sintheta - costheta * temp)
-				/ (LENGTH
-						* (FOURTHIRDS
-								- MASSPOLE * costheta * costheta / TOTAL_MASS));
-
-		float xacc = temp - POLEMASS_LENGTH * thetaacc * costheta / TOTAL_MASS;
-
-		// Update the four state variables, using Euler's method.
-
-		x += TAU * x_dot;
-		x_dot += TAU * xacc;
-		theta += TAU * theta_dot;
-		theta_dot += TAU * thetaacc;
-		// End cart-pole simulation
+		update_state(action, x, x_dot, theta, theta_dot);
 
 		// Get box of state space containing the resulting state.
 		state = new_state;
@@ -379,7 +349,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 						if (j == 0) {
 							printf("{ ");
 						}
-						printf("%.3f ", q_shared[id][i][j]);
+						printf("%.3f ", q[id][i][j]);
 						if (j < N_ACTIONS - 1) {
 							printf(", ");
 						} else {
@@ -398,31 +368,29 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 			cur_steps = 0;
 
 			// Begin argmax
-			qvalue q_max = q_shared[id][new_state][0];
+			qvalue q_max = q[id][new_state][0];
 			for (int i = 0; i < N_ACTIONS; i++) {
-#pragma HLS PIPELINE II=2
-				if (q_shared[id][new_state][i] > q_max) {
-					q_max = q_shared[id][new_state][i];
+				if (q[id][new_state][i] > q_max) {
+					q_max = q[id][new_state][i];
 				}
 			}
 			// End argmax
 			// Reinforcement upon failure is -1
-			q_shared[id][state][action] += ALPHA(failures[id])* (-1 + GAMMA * q_max - q_shared[id][state][action]);
+			q[id][state][action] += ALPHA(failures[id])* (-1 + GAMMA * q_max - q[id][state][action]);
 
 		} else {
 			// Not a failure.
 			failed = 0;
 			// Begin argmax
-			qvalue q_max = q_shared[id][new_state][0];
+			qvalue q_max = q[id][new_state][0];
 			for (int i = 0; i < N_ACTIONS; i++) {
-#pragma HLS PIPELINE II=2
-				if (q_shared[id][new_state][i] > q_max) {
-					q_max = q_shared[id][new_state][i];
+				if (q[id][new_state][i] > q_max) {
+					q_max = q[id][new_state][i];
 				}
 			}
 			// End argmax
 			// Reinforcement is 0
-			q_shared[id][state][action] += ALPHA(failures[id]) * (0 + GAMMA * q_max - q_shared[id][state][action]);
+			q[id][state][action] += ALPHA(failures[id]) * (0 + GAMMA * q_max - q[id][state][action]);
 			cur_steps++;
 		}
 	}
@@ -433,7 +401,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 			if (j == 0) {
 				printf("{ ");
 			}
-			printf("%.3f ", q_shared[id][i][j]);
+			printf("%.3f ", q[id][i][j]);
 			if (j < N_ACTIONS - 1) {
 				printf(", ");
 			} else {
@@ -447,6 +415,35 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 
 	running = STATUS_DONE;
 	return failures[id];
+}
+
+void update_state(int action, float &x, float &x_dot, float &theta, float &theta_dot) {
+	// Begin cart-pole simulation
+	// Takes an action (0 or 1) and the current values of the
+	// four state variables and updates their values by estimating the state
+	// TAU seconds later.
+	float force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
+	float sintheta = hls::sin(theta);
+	float costheta = hls::cos(theta);
+
+
+	float temp = (force + POLEMASS_LENGTH * theta_dot * theta_dot * sintheta)
+			/ TOTAL_MASS;
+
+	float thetaacc = (GRAVITY * sintheta - costheta * temp)
+			/ (LENGTH
+					* (FOURTHIRDS
+							- MASSPOLE * costheta * costheta / TOTAL_MASS));
+
+	float xacc = temp - POLEMASS_LENGTH * thetaacc * costheta / TOTAL_MASS;
+
+	// Update the four state variables, using Euler's method.
+
+	x += TAU * x_dot;
+	x_dot += TAU * xacc;
+	theta += TAU * theta_dot;
+	theta_dot += TAU * thetaacc;
+	// End cart-pole simulation
 }
 
 int discretize(float x, float x_dot, float theta, float theta_dot) {
