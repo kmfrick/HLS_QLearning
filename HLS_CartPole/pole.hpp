@@ -7,7 +7,7 @@
 const int OBJECTIVE = 195;
 const int N_ACTIONS = 2;
 const int N_BOXES = 162;	// Number of disjoint boxes of state space
-const int N_AGENTS = 2;	// Number of parallel learning agents
+const int N_AGENTS = 1;	// Number of parallel learning agents
 
 const float GAMMA = 0.999f;
 
@@ -35,9 +35,9 @@ const status_bits STATUS_INIT_DONE = 0x03;
 const status_bits STATUS_FIRST_FAILURE = 0x07;
 const status_bits STATUS_DONE = 0x0F;
 
-int learn(hls::stream<ap_uint<32> > &hls_rand_stream,
-		volatile status_bits &running, volatile qtable q_shared[N_AGENTS],
-		volatile int failures[N_AGENTS], ap_uint<8> id);
+int learn(hls::stream<ap_uint<32> > &,
+		volatile status_bits &, volatile qtable [N_AGENTS],
+		volatile int [N_AGENTS], ap_uint<8>);
 
 /*----------------------------------------------------------------------
  discretize:  Given the current state, returns a number from 1 to N_BOXES
@@ -51,6 +51,7 @@ const float twelve_degrees = 0.2094384f;
 const float fifty_degrees = 0.87266f;
 const float X_BOUND = 2.4f;
 
-int discretize(float x, float x_dot, float theta, float theta_dot);
+int discretize(float, float, float, float);
+void update_state(int, float &, float &, float &, float &);
 
 #endif

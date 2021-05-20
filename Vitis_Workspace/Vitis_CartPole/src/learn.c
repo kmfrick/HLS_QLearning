@@ -53,15 +53,12 @@
 
 #define N_ACTIONS 2
 #define N_BOXES 162
-#define N_AGENTS 2
+#define N_AGENTS 1
 
 int main() {
-	int i, j, k;
+	const int seed = 50321;
+	int i, j;
 	u32 is_done, return_val, all_done;
-
-	const UINTPTR q_base_addr = (UINTPTR)0x10000000;
-	const UINTPTR failures_base_addr = (UINTPTR)0x18000000;
-
 	u16 device_id = 0;
 	XLearn instance_ptr[N_AGENTS];
 	int error;
@@ -69,7 +66,7 @@ int main() {
 
 	init_platform();
 	// Initialize RNG
-	srand(50321);
+	srand(seed);
 
 	Xil_DCacheDisable();
 	Xil_ICacheDisable();
@@ -85,26 +82,16 @@ int main() {
 	}
 
 	// Initialize q-table and failures
-	for (k = 0; k < N_AGENTS; k++) {
-
-		UINTPTR addr = failures_base_addr + k * sizeof(int);
-		printf("Writing addr %p\n", addr);
-
-		Xil_Out32(addr, 0x1337);
-		return_val = Xil_In32(addr);
-		printf("Agent %d failures = %lu\n", device_id, return_val);
-
+	for (device_id = 0; device_id < N_AGENTS; device_id++) {
 		for (i = 0; i < N_BOXES; i++) {
 			for (j = 0; j < N_ACTIONS; j++) {
-				float r = (rand() % 100) / 100.0f;
-				addr = q_base_addr + (k * (N_ACTIONS * N_BOXES) + i * N_ACTIONS + j) * sizeof(float);
-				printf("Writing addr %p\n", addr);
-				Xil_Out32(addr, r);
+				int offset = device_id * N_BOXES * N_ACTIONS;
+				offset += N_ACTIONS * i;
+				offset += j;
+				XLearn_Write_q_Words(&instance_ptr[device_id], offset, rand() / RAND_MAX, 1);
 			}
 		}
-
-
-
+		XLearn_Set_failures_i(&instance_ptr[device_id], 0);
 	}
 
 	printf("\nfailures, q initialized\n");
@@ -125,11 +112,9 @@ int main() {
 			printf("Agent %d done = %lu\n", device_id, is_done);
 			is_done = XLearn_IsIdle(&instance_ptr[device_id]);
 			printf("Agent %d idle = %lu\n", device_id, is_done);
-			UINTPTR addr = failures_base_addr + device_id * sizeof(int);
-			return_val = Xil_In32(addr);
-			printf("Agent %d failures = %lu\n", device_id, return_val);
 		}
 	}
+
 	printf("\nPrinting return values\n");
 	for (device_id = 0; device_id < N_AGENTS; device_id++) {
 		return_val = XLearn_Get_return(&instance_ptr[device_id]);
