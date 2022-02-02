@@ -522,27 +522,3 @@ int discretize(float x, float x_dot, float theta, float theta_dot) {
 	return (box);
 }
 
-#ifdef NO_HLS
-int main() {
-        srand(50321);
-        int periods; // Will hold periods needed to converge
-        static status_bits running;
-        int i, j, k;
-        static qtable q_shared[N_AGENTS];
-        for (k = 0; k < N_AGENTS; k++) {
-                for (i = 0; i < N_BOXES; i++ ) {
-                        for (j = 0; j < N_ACTIONS; j++) {
-                                q_shared[k][i][j] = floattofp(1+(rand()%100)/100.0);
-                        }
-                }
-        }
-        // Initialize RNG
-        printf("Initializing q_shared\n");
-        // Iterate through the action-learn loop
-        printf("Calling learn()\n");
-        int temp = 0;
-        periods = learn(temp, running, q_shared, 0);
-        printf("Took %d periods to balance the pole.\n", periods);
-        return 0;
-}
-#endif
