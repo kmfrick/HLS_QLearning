@@ -29,7 +29,7 @@ typedef ap_uint<4> status_bits;
 typedef ap_uint<8> eightbits;
 const float MTWISTER_MAX = float(ap_uint<32>(~0)/2);
 
-#define random_01 (hls_rand_stream.read()&1048575)
+#define random_01 ((rand() & 0xffff)/float(0xffff))
 #define random_action (hls_rand_stream.read() & 1)
 
 #define sinfunc hls::sin
