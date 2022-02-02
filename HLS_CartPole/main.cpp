@@ -32,7 +32,7 @@ int main() {
 	for (k = 0; k < N_AGENTS; k++) {
 		for (i = 0; i < N_BOXES; i++) {
 			for (j = 0; j < N_ACTIONS; j++) {
-				q[k][i][j] = rand() / float(RAND_MAX);
+				q[k][i][j] = floattofp(1+(rand()%100)/100.0);
 			}
 		}
 	}

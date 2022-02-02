@@ -38,7 +38,7 @@ const float MTWISTER_MAX = float(ap_uint<32>(~0)/2);
 #endif
 
 
-const int OBJECTIVE = 195;
+const int OBJECTIVE = 400;
 const int N_ACTIONS = 2;
 const int N_BOXES = 162;	// Number of disjoint boxes of state space
 const int N_AGENTS = 1;	// Number of parallel learning agents

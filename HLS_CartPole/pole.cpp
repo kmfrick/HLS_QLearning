@@ -44,7 +44,7 @@ fixp16 inttofp(int x) {
         return static_cast<fixp16>(x << FRACBITS);
 }
 
-#define MOV_AVG_INTERVAL 50
+#define MOV_AVG_INTERVAL 100
 
 // Alpha: Q-table learning rate
 // alpha = max(ALPHA_MIN, min(1.0f, 1.0f - log10((failures + 1.0f) / 25.0f)))
