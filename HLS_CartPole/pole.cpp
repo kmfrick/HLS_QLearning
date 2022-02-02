@@ -7,12 +7,42 @@
 
 #include "pole.hpp"
 
-#include <hls_math.h>
+const int FRACBITS = 12;
+const int FRACUNITS = 1 << FRACBITS;
 
-const float MTWISTER_MAX = float(ap_uint<32>(~0)/2);
+fixp16 fpmod(fixp16 x, fixp16 y) {
+        while (x < 0) {
+                x += y;
+        }
+        while (x > y) {
+                x -= y;
+        }
+        return x;
+}
 
-#define random_01 (hls_rand_stream.read() / MTWISTER_MAX)
-#define random_action (hls_rand_stream.read() % N_ACTIONS)
+fixp16 fpdiv(fixp16 x, fixp16 y) {
+        return ((x)*FRACUNITS)/(y);
+}
+
+fixp16 fpmul(fixp16 x, fixp16 y) {
+        return (x * y) >> FRACBITS;
+}
+
+float fptofloat(fixp16 x) {
+        return float(x) / FRACUNITS;
+}
+
+int fptoint(fixp16 x) {
+        return int(x >> FRACBITS);
+}
+
+fixp16 floattofp(float x) {
+        return static_cast<fixp16>(x * FRACUNITS);
+}
+
+fixp16 inttofp(int x) {
+        return static_cast<fixp16>(x << FRACBITS);
+}
 
 #define MOV_AVG_INTERVAL 50
 
@@ -260,14 +290,14 @@ const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.066531, 0.066449, 0.066366, 0.066285, 0.066204, 0.066123, 0.066042,
 		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };
 
-int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &running, volatile qtable q[N_AGENTS], volatile int failures[N_AGENTS], ap_uint<8> id) {
+int learn(random_stream &hls_rand_stream,  status_bits &running,  qtable q[N_AGENTS], eightbits id) {
 #pragma HLS INTERFACE axis port=hls_rand_stream
 #pragma HLS INTERFACE ap_none port=id
 #pragma HLS INTERFACE ap_none port=running
 #pragma HLS INTERFACE s_axilite port=return
 #pragma HLS INTERFACE s_axilite port=q
 #pragma HLS INTERFACE s_axilite port=failures
-
+	int failures[N_AGENTS];
 	running = STATUS_START;
 	float p, oldp, rhat, r;
 	int failed;
@@ -349,7 +379,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 						if (j == 0) {
 							printf("{ ");
 						}
-						printf("%.3f ", q[id][i][j]);
+						printf("%.3f ", fptofloat(q[id][i][j]));
 						if (j < N_ACTIONS - 1) {
 							printf(", ");
 						} else {
@@ -376,7 +406,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 			}
 			// End argmax
 			// Reinforcement upon failure is -1
-			q[id][state][action] += ALPHA(failures[id])* (-1 + GAMMA * q_max - q[id][state][action]);
+			q[id][state][action] += fpmul(floattofp(ALPHA(failures[id])), (inttofp(-1) + fpmul(floattofp(GAMMA), q_max) - q[id][state][action]));
 
 		} else {
 			// Not a failure.
@@ -390,7 +420,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 			}
 			// End argmax
 			// Reinforcement is 0
-			q[id][state][action] += ALPHA(failures[id]) * (0 + GAMMA * q_max - q[id][state][action]);
+			q[id][state][action] += fpmul(floattofp(ALPHA(failures[id])), (fpmul(floattofp(GAMMA), q_max) - q[id][state][action]));
 			cur_steps++;
 		}
 	}
@@ -401,7 +431,7 @@ int learn(hls::stream<ap_uint<32> > &hls_rand_stream, volatile status_bits &runn
 			if (j == 0) {
 				printf("{ ");
 			}
-			printf("%.3f ", q[id][i][j]);
+			printf("%.3f ", fptofloat(q[id][i][j]));
 			if (j < N_ACTIONS - 1) {
 				printf(", ");
 			} else {
@@ -423,8 +453,8 @@ void update_state(int action, float &x, float &x_dot, float &theta, float &theta
 	// four state variables and updates their values by estimating the state
 	// TAU seconds later.
 	float force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
-	float sintheta = hls::sin(theta);
-	float costheta = hls::cos(theta);
+	float sintheta = sinfunc(theta);
+	float costheta = sinfunc(theta);
 
 
 	float temp = (force + POLEMASS_LENGTH * theta_dot * theta_dot * sintheta)
@@ -492,3 +522,27 @@ int discretize(float x, float x_dot, float theta, float theta_dot) {
 	return (box);
 }
 
+#ifdef NO_HLS
+int main() {
+        srand(50321);
+        int periods; // Will hold periods needed to converge
+        static status_bits running;
+        int i, j, k;
+        static qtable q_shared[N_AGENTS];
+        for (k = 0; k < N_AGENTS; k++) {
+                for (i = 0; i < N_BOXES; i++ ) {
+                        for (j = 0; j < N_ACTIONS; j++) {
+                                q_shared[k][i][j] = floattofp(1+(rand()%100)/100.0);
+                        }
+                }
+        }
+        // Initialize RNG
+        printf("Initializing q_shared\n");
+        // Iterate through the action-learn loop
+        printf("Calling learn()\n");
+        int temp = 0;
+        periods = learn(temp, running, q_shared, 0);
+        printf("Took %d periods to balance the pole.\n", periods);
+        return 0;
+}
+#endif
