@@ -7,42 +7,6 @@
 
 #include "pole.hpp"
 
-const int FRACBITS = 12;
-const int FRACUNITS = 1 << FRACBITS;
-
-fixp16 fpmod(fixp16 x, fixp16 y) {
-        while (x < 0) {
-                x += y;
-        }
-        while (x > y) {
-                x -= y;
-        }
-        return x;
-}
-
-fixp16 fpdiv(fixp16 x, fixp16 y) {
-        return ((x)*FRACUNITS)/(y);
-}
-
-fixp16 fpmul(fixp16 x, fixp16 y) {
-        return (x * y) >> FRACBITS;
-}
-
-float fptofloat(fixp16 x) {
-        return float(x) / FRACUNITS;
-}
-
-int fptoint(fixp16 x) {
-        return int(x >> FRACBITS);
-}
-
-fixp16 floattofp(float x) {
-        return static_cast<fixp16>(x * FRACUNITS);
-}
-
-fixp16 inttofp(int x) {
-        return static_cast<fixp16>(x << FRACBITS);
-}
 
 #define MOV_AVG_INTERVAL 100
 
@@ -290,13 +254,13 @@ const float EPS_ARR[MAX_FAILURES] = { 0.900000, 0.895761, 0.891542, 0.887345,
 		0.066531, 0.066449, 0.066366, 0.066285, 0.066204, 0.066123, 0.066042,
 		0.065962, 0.065883, 0.065804, 0.065725, 0.065646 };
 
-int learn(random_stream &hls_rand_stream,  status_bits &running,  qtable q[N_AGENTS], eightbits id) {
-#pragma HLS INTERFACE axis port=hls_rand_stream
+int learn(random_stream &hls_rand_stream,   status_bits &running,   qtable q[N_AGENTS], eightbits id) {
+#pragma HLS INTERFACE axis port=hls_rand_stream register_mode=both register
 #pragma HLS INTERFACE ap_none port=id
 #pragma HLS INTERFACE ap_none port=running
-#pragma HLS INTERFACE s_axilite port=return
-#pragma HLS INTERFACE s_axilite port=q
-#pragma HLS INTERFACE s_axilite port=failures
+#pragma HLS INTERFACE s_axilite port=q bundle=shared
+#pragma HLS INTERFACE s_axilite port=return   bundle=ret
+
 	int failures[N_AGENTS];
 	running = STATUS_START;
 	float p, oldp, rhat, r;
@@ -328,9 +292,9 @@ int learn(random_stream &hls_rand_stream,  status_bits &running,  qtable q[N_AGE
 		} else {
 			// Begin action argmax
 			action = 0;
-			qvalue q_max = q[id][new_state][0];
+			float q_max = q[id][new_state][0];
 			for (int i = 0; i < N_ACTIONS; i++) {
-				qvalue q_tilde = 0;
+				float q_tilde = 0;
 				for (int k = 0; k < N_AGENTS; k++) {
 #pragma HLS UNROLL
 					q_tilde +=	q[k][new_state][i] * failures[k];
@@ -379,7 +343,7 @@ int learn(random_stream &hls_rand_stream,  status_bits &running,  qtable q[N_AGE
 						if (j == 0) {
 							printf("{ ");
 						}
-						printf("%.3f ", fptofloat(q[id][i][j]));
+						printf("%.3f ", q[id][i][j]);
 						if (j < N_ACTIONS - 1) {
 							printf(", ");
 						} else {
@@ -398,7 +362,7 @@ int learn(random_stream &hls_rand_stream,  status_bits &running,  qtable q[N_AGE
 			cur_steps = 0;
 
 			// Begin argmax
-			qvalue q_max = q[id][new_state][0];
+			float q_max = q[id][new_state][0];
 			for (int i = 0; i < N_ACTIONS; i++) {
 				if (q[id][new_state][i] > q_max) {
 					q_max = q[id][new_state][i];
@@ -406,13 +370,13 @@ int learn(random_stream &hls_rand_stream,  status_bits &running,  qtable q[N_AGE
 			}
 			// End argmax
 			// Reinforcement upon failure is -1
-			q[id][state][action] += fpmul(floattofp(ALPHA(failures[id])), (inttofp(-1) + fpmul(floattofp(GAMMA), q_max) - q[id][state][action]));
+			q[id][state][action] += ALPHA(failures[id]) * (-1 + (GAMMA* q_max) - q[id][state][action]);
 
 		} else {
 			// Not a failure.
 			failed = 0;
 			// Begin argmax
-			qvalue q_max = q[id][new_state][0];
+			float q_max = q[id][new_state][0];
 			for (int i = 0; i < N_ACTIONS; i++) {
 				if (q[id][new_state][i] > q_max) {
 					q_max = q[id][new_state][i];
@@ -420,7 +384,7 @@ int learn(random_stream &hls_rand_stream,  status_bits &running,  qtable q[N_AGE
 			}
 			// End argmax
 			// Reinforcement is 0
-			q[id][state][action] += fpmul(floattofp(ALPHA(failures[id])), (fpmul(floattofp(GAMMA), q_max) - q[id][state][action]));
+			q[id][state][action] += ALPHA(failures[id])* ((GAMMA* q_max) - q[id][state][action]);
 			cur_steps++;
 		}
 	}
@@ -431,7 +395,7 @@ int learn(random_stream &hls_rand_stream,  status_bits &running,  qtable q[N_AGE
 			if (j == 0) {
 				printf("{ ");
 			}
-			printf("%.3f ", fptofloat(q[id][i][j]));
+			printf("%.3f ", q[id][i][j]);
 			if (j < N_ACTIONS - 1) {
 				printf(", ");
 			} else {
@@ -522,3 +486,27 @@ int discretize(float x, float x_dot, float theta, float theta_dot) {
 	return (box);
 }
 
+#ifdef NO_HLS
+int main() {
+        srand(50321);
+        int periods; // Will hold periods needed to converge
+        static status_bits running;
+        int i, j, k;
+        static qtable q_shared[N_AGENTS];
+        for (k = 0; k < N_AGENTS; k++) {
+                for (i = 0; i < N_BOXES; i++ ) {
+                        for (j = 0; j < N_ACTIONS; j++) {
+                                q_shared[k][i][j] = 1+(rand()%100)/100.0;
+                        }
+                }
+        }
+        // Initialize RNG
+        printf("Initializing q_shared\n");
+        // Iterate through the action-learn loop
+        printf("Calling learn()\n");
+        int temp = 0;
+        periods = learn(temp, running, q_shared, 0);
+        printf("Took %d periods to balance the pole.\n", periods);
+        return 0;
+}
+#endif
