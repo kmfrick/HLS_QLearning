@@ -32,7 +32,7 @@ int main() {
 	for (k = 0; k < N_AGENTS; k++) {
 		for (i = 0; i < N_BOXES; i++) {
 			for (j = 0; j < N_ACTIONS; j++) {
-				q[k][i][j] = floattofp(1+(rand()%100)/100.0);
+				q[k][i][j] = 1+(rand()%100)/100.0;
 			}
 		}
 	}
@@ -43,3 +43,4 @@ int main() {
 	printf("Took %d periods to balance the pole.\n", periods);
 	return 0;
 }
+
