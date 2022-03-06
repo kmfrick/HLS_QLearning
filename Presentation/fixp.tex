@@ -1,0 +1,86 @@
+%% Requires compilation with XeLaTeX or LuaLaTeX
+\documentclass[10pt,xcolor={table,dvipsnames},t]{beamer}
+\usetheme{UCBerkeley}
+\title[AP-SD-M]{Fixed-point Q-Learning}
+\subtitle{Project Work on Digital Systems M}
+\author{Kevin Michael Frick \and Davide Ragazzini}
+\institute{University of Bologna}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Introduction}
+
+\begin{itemize}
+  \item Objective: implementing Q-value update, exploration etc. in fixed point
+  \item We compare it to floating point in terms of performance and resource usage
+  \item We also discovered a bug in our initial floating-point implementation, so we re-ran our tests to ensure a fair comparison
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Performance: periods to convergence}
+\begin{table}[]
+\begin{tabular}{llllll}
+\textbf{Initalization of $Q$}  & \textbf{{[}0,1{]}} & \textbf{{[}1, 2{]}} & \textbf{{[}2, 3{]}} & \textbf{{[}3, 4{]}} & \textbf{{[}4, 5{]}} \\
+\textbf{Fixed point}    & 234                & 192                 & 196                 & 200                 & 202                 \\
+\textbf{Floating point} & 176                & 186                 & 191                 & 195                 & 199                
+\end{tabular}
+\end{table}
+
+There is a slight fraction of tests that do not converge when initializing in $[0, 1]$ and using fixed point. This does not happen when using floating point.
+
+We see that the two formulations are almost equivalent in terms of period to convergence.
+
+\end{frame}
+
+
+\begin{frame}{Resource usage}
+
+We compare side-by-side the resource usage table given by Vitis HLS.
+
+\begin{table}[]
+\begin{tabular}{lll}
+               & \textbf{Floating point} & \textbf{Fixed point} \\
+\textbf{SLICE} & 1579                    & 1778                 \\
+\textbf{LUT}   & 4416                    & 5271                 \\
+\textbf{FF}    & 4224                    & 4456                 \\
+\textbf{DSP}   & 19                      & 31                   \\
+\textbf{BRAM}  & 6                       & 6                    \\
+\textbf{SRL}   & 90                      & 118                 
+\end{tabular}
+\end{table}
+
+\end{frame}
+
+\begin{frame}{Timing}
+\begin{table}[]
+\begin{tabular}{lll}
+                                & \textbf{Floating point} & \textbf{Fixed point} \\
+\textbf{CP post-synthesis}      & 8.276ms                   & 8.276ms                \\
+\textbf{CP post-implementation} & 9.149ms                 & 9.285ms \\
+\textbf{Time per iteration} & 77ms & 63ms
+\end{tabular}
+\end{table}
+
+Critical paths maintain basically the same speed, but fixed point enjoys a faster overall execution time.
+\end{frame}
+
+\begin{frame}{Conclusions}
+    
+    \begin{itemize}
+        \item There is no improvement in performance
+        \item Floating-point uses less resources
+        \item RL is an inherently floating-point task, and the best fixed-point can do is optimize for execution time
+        \item This is probably due to the DSPs in more modern FPGAs. Older, slower ones would see fixed-point fare better
+    \end{itemize}
+    
+\end{frame}
+
+\end{document}
+

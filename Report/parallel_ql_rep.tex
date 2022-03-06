@@ -100,7 +100,7 @@ Le variabili di stato di questo task sono:
 
 Le azioni disponibili sono solo due: spostare il carrello di un intervallo $\delta x$ a destra o a sinistra, ovvero $A = \{x \leftarrow x + \delta x, x \leftarrow x - \delta x\}$. 
 
-Si è scelto di impostare il discount factor a $\gamma = 0.999$ e una learning rate calante secondo la formula $\alpha = \log_{10}\frac{t + 1}{25}$, seguendo la letteratura concernente il task scelto \citep{sutton_reinforcement_2018}.
+Si è scelto di impostare il discount factor a $\gamma = 0.999$ e una learning rate calante secondo la formula $\alpha = 1 - \log_{10}\frac{t + 1}{25}$, seguendo la letteratura concernente il task scelto \citep{sutton_reinforcement_2018}.
 Il parametro $\epsilon$ è anch'esso calante secondo la formula $\epsilon = 0.9 + (0.9 - 0.05) e^{-\frac{t}{200}}$.
 
 Il codice HLS, lo schema a blocchi per Vivado e il codice per la PS sono rilasciati sotto licenza GPLv3 all'indirizzo \url{https://github.com/kmfrick/HLS_QLearning}.
@@ -111,14 +111,35 @@ La top-function dell'IP generata è \texttt{learn()}, che riceve in input un \te
 Si è scelto di disaccoppiare la generazione di numeri casuali dalla top-function di apprendimento, inserendo una direttiva che richieda a Vitis HLS di tradurre questo argomento in una porta AXI-Stream sulla IP generata. 
 Gli altri argomenti della top-function sono la porta di uscita \texttt{running}, che verrà poi collegata ai LED della ZedBoard per fornire informazioni sullo stato dell'IP, la porta di ingresso \texttt{id} contenente un identificatore dell'agente, cablato a 0, e le due porte di I/O \texttt{failures} e \texttt{q\_table} che verrano mappate alla DRAM del PS mediante il protocollo AXI4 Lite, nel bundle \texttt{shared}.
 Il valore restituito dalla top function è comunicato al PS mediante il protocollo AXI4 Lite, nel bundle \texttt{return}.
-L'azione scelta e lo stato attuale sono passati alla \texttt{get\_state()} che restituisce lo stato risultante. 
-Il codice della \texttt{get\_state()} è il seguente:
+L'azione scelta e lo stato attuale sono passati alla \texttt{update\_state()} che restituisce lo stato risultante. 
+Il codice della \texttt{update\_state()} è il seguente:
 
 \begin{lstlisting}[language=C++]
-int get_state() {
+void update_state(int action, float &x, float &x_dot, float &theta, float &theta_dot) {
+	float xacc, thetaacc, force, costheta, sintheta, temp;
+	// Begin cart-pole simulation
+	// Takes an action (0 or 1) and the current values of the
+	// four state variables and updates their values by estimating the state
+	// TAU seconds later.
+	force = (action > 0) ? FORCE_MAG : -FORCE_MAG;
+	sintheta = hls::sin(theta);
+	costheta = hls::cos(theta);
+	temp = (force + POLEMASS_LENGTH * theta_dot * theta_dot * sintheta)
+			/ TOTAL_MASS;
+	thetaacc =
+			(GRAVITY * sintheta - costheta * temp)
+					/ (LENGTH
+							* (FOURTHIRDS
+									- MASSPOLE * costheta * costheta
+											/ TOTAL_MASS));
+	xacc = temp - POLEMASS_LENGTH * thetaacc * costheta / TOTAL_MASS;
+	// Update the four state variables, using Euler's method.
+	x += TAU * x_dot;
+	x_dot += TAU * xacc;
+	theta += TAU * theta_dot;
+	theta_dot += TAU * thetaacc;
+	// End cart-pole simulation
 
-	printf("Hello, World!");
-	return 0;
 }
 \end{lstlisting}
 Lo spazio degli stati è continuo con dimensione 4, ma viene mappato a un insieme limitato di 162 possibili stati, le righe della matrice $Q$, mediante la funzione \texttt{discretize()}. 
@@ -230,13 +251,14 @@ Lo schema a blocchi definito su Vivado è rappresentato in fig. \labelcref{fig:b
 \label{fig:bd}
 \end{figure}
 
-Una AXI Interconnect permette di collegare i blocchi che accedono alla memoria e mappare le variabili di ingresso e uscita sulla DRAM del PS. 
+Una IP AXI Interconnect permette di collegare i blocchi che accedono alla memoria e mappare le variabili di ingresso e uscita sulla DRAM del PS. 
+Una IP AXI GPIO permette di passare il seed per il RNG in input dalla PS.
 
 \subsection{Vitis}
 È stata sviluppata un'applicazione bare-metal su PS per avviare l'IP, gestirne i dati in input e automatizzare i test prestazionali. 
-Si è scelto di testare le differenze che si vedono inizializzando la matrice $Q$ a 0, inizializzandola con valori casuali tra 0 e 1  e inizializzandola con valori casuali tra 4 e 5 (optimistic initial values). 
+Si è scelto di testare le differenze che si vedono inizializzando la matrice $Q$ a 0 e inizializzandola con valori casuali negli intervalli $[0, 1]$, $[1, 2]$, $[2, 3]$, $[3, 4]$, $[4, 5]$. 
+Per gli ultimi quattro casi si parla di \emph{optimistic initial values}.
 
-\subsection{Stima dell'occupazione della memoria}
 \subsection{Problemi di implementazione}
 Durante lo sviluppo di questa soluzione, è sorta la questione di come gestire l'input e l'output delle variabili, in modo da realizzare una soluzione integrabile in modo semplice in pipeline già esistenti. 
 Data la possibilità di interagire con il PS tramite UART, si è scelto di sviluppare un'applicazione bare-metal su PS. 
@@ -265,7 +287,7 @@ I risultati ottenuti in media tra i 1000 seed sono riportati nella tabella \labe
 \centering
 
 
-\includegraphics[width=0.5\textwidth]{perf.png}
+\includegraphics[width=\textwidth]{perf.png}
 \caption{Prestazioni sperimentali medie}
 \label{fig:perf}
 \end{figure}
@@ -279,16 +301,22 @@ I risultati ottenuti in media tra i 1000 seed sono riportati nella tabella \labe
 	>{\columncolor[HTML]{EFEFEF}}l |l|}
 	\hline
 	& \cellcolor[HTML]{EFEFEF}\textbf{Periodi per la convergenza} \\ \hline
-	\textbf{Inizializzazione casuale}             &                                                                 \\ \hline
-	\textbf{Inizializzazione casuale ottimistica} &                                                                 \\ \hline
-	\textbf{Inizializzazione a 0}                 &                                                                 \\ \hline
-	\textbf{}                                     &                                                                 \\ \hline
+    \textbf{Inizializzazione casuale in $[0, 1]$}             &  363                                                               \\ \hline
+    \textbf{Inizializzazione casuale in $[1, 2]$} &  329                                                               \\ \hline
+    \textbf{Inizializzazione casuale in $[2, 3]$} &  375                                                               \\ \hline
+    \textbf{Inizializzazione casuale in $[3, 4]$} &  426                                                               \\ \hline
+    \textbf{Inizializzazione casuale in $[4, 5]$} &  485                                                               \\ \hline
+	\textbf{Inizializzazione a 0}                 &  800                                                               \\ \hline
 	\end{tabular}
 	\caption{Prestazioni sperimentali medie}
 	\label{table:perf}
 	\end{table}
 
 	Come è noto e ampiamente discusso in letteratura \citep{sutton_reinforcement_2018}, l'inizializzazione a valori casuali ottimistici migliora la velocità di convergenza. 
+  Tuttavia, questo avviene solo se i valori sono \emph{leggermente} ottimistici, ovvero nell'intervallo $[1, 2]$, mentre negli esempi solitamente portati dalla letteratura si ha un miglioramento anche con valori molto più ottimistici (e.g. in $[4, 5]$). 
+  Si noti che l'inizializzazione a 0 impedisce all'algoritmo di convergere.
+  Ciò è dovuto all'impostazione della funzione di reward: non è possibile ottenere una reward maggiore di 0, quindi inizializzare a 0 la Q-table significa che la prima azione a essere scelta otterrà necessariamente una stima negativa della reward, e in ogni periodo nel quale verrà scelta l'exploitation l'algoritmo sceglierà sempre la stessa azione anche se subottimale.
+  I valori iniziali ottimistici invece provocano ``esplorazione implicita'': l'algoritmo esplora implicitamente più scelte anche in caso di exploitation, dato che un singolo aggiornamento di una cella della matrice può non bastare a rendere il suo valore il massimo della propria riga. 
 	La velocità media di convergenza è comunque minore di quella ottenuta da altre implementazioni dell'algoritmo, probabilmente a causa degli errori di arrotondamento portati dall'utilizzo di variabili in virgola mobile a 32 bit, reso necessario dalla ridotta disponibilità di memoria su FPGA.
 	\section{Evoluzioni future}
 	Il codice HLS è stato impostato in modo da permettere l'implementazione di apprendimento multiagente \citep{kretchmar_parallel_2002} mediante la condivisione degli array \texttt{failures} e \texttt{q} tra più moduli uguali nella PL.
