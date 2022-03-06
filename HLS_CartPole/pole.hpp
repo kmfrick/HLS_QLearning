@@ -22,14 +22,14 @@ typedef int random_stream;
 #include <ap_int.h>
 #include <hls_stream.h>
 #include <hls_math.h>
-#include "mtwister.h"
+#include "mtwister.hpp"
 typedef hls::stream<ap_uint<32> > random_stream;
 typedef ap_uint<1> bit;
 typedef ap_uint<4> status_bits;
 typedef ap_uint<8> eightbits;
 const float MTWISTER_MAX = float(ap_uint<32>(~0)/2);
 
-#define random_01 ((rand() & 0xffff)/float(0xffff))
+#define random_01 (hls_rand_stream.read()&1048575)
 #define random_action (hls_rand_stream.read() & 1)
 
 #define sinfunc hls::sin
@@ -38,7 +38,7 @@ const float MTWISTER_MAX = float(ap_uint<32>(~0)/2);
 #endif
 
 
-const int OBJECTIVE = 195;
+const int OBJECTIVE = 400;
 const int N_ACTIONS = 2;
 const int N_BOXES = 162;	// Number of disjoint boxes of state space
 const int N_AGENTS = 1;	// Number of parallel learning agents
