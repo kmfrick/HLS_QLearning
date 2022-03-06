@@ -300,7 +300,6 @@ int learn(random_stream &hls_rand_stream,  status_bits &running,   qtable q[N_AG
 
 	int failures[N_AGENTS];
 	running = STATUS_START;
-	float p, oldp, rhat, r;
 	int failed;
 	int action;
 	int state;
